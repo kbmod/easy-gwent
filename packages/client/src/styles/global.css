@@ -241,15 +241,15 @@ body::before {
   box-shadow: 0 0 0 3px #1a120a, 0 0 0 5px #c9a22788, 0 0 12px #c9a22755;
 }
 .seat-name { font-size: 17px; color: #c9a227; font-family: 'Cinzel', serif; }
+/* Session id shown above the opponent card. */
 .seat-room {
   font-size: 11px;
   letter-spacing: 0.08em;
   color: rgba(216, 205, 180, 0.75);
   font-family: 'Cinzel', serif;
   user-select: all; /* one click/tap selects the whole code for copying */
+  margin-bottom: -4px; /* hug the card below (status-col gap is 8px) */
 }
-/* Nudge the opponent (top-left) card down a touch so the room id has room. */
-.status-col .seat:first-child { margin-top: 5px; }
 .seat-gems { color: #b3202a; letter-spacing: 2px; font-size: 16px; }
 .seat-info { font-size: 13px; color: #b8a988; }
 .passed { color: #e06c5c; font-weight: bold; }
@@ -370,7 +370,8 @@ body::before {
     padding-bottom: calc(6px + env(safe-area-inset-bottom));
   }
   /* Status column becomes a horizontal strip */
-  .status-col { flex-direction: row; align-items: stretch; gap: 6px; }
+  .status-col { flex-direction: row; align-items: stretch; gap: 6px; flex-wrap: wrap; }
+  .status-col .seat-room { width: 100%; margin-bottom: -2px; }
   .status-col .seat { flex: 1; padding: 4px 6px; gap: 2px; }
   .status-col .weather-box, .status-col .round-info { font-size: 11px; }
   .game-center { flex: 1; min-height: 0; }
