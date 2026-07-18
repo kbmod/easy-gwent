@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { byId, getCardText } from '@gwent/data';
 import { scores, type GameState, type PlayerId, type WeatherKind } from '@gwent/engine';
 import { Card } from './Card.tsx';
@@ -24,6 +25,14 @@ export function StatusColumn({
   roomId?: string;
 }) {
   const opp: PlayerId = human === 0 ? 1 : 0;
+  const [copied, setCopied] = useState(false);
+  const copyRoomId = () => {
+    if (!roomId) return;
+    navigator.clipboard?.writeText(roomId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
   const weather = (Object.keys(state.weather) as WeatherKind[]).filter((w) => state.weather[w]);
   const totals = scores(state);
 
@@ -59,8 +68,17 @@ export function StatusColumn({
 
   return (
     <div className="status-col">
-      {roomId && <div className="seat-room">room {roomId}</div>}
-      {seat(opp, false)}
+      <div className="opp-block">
+        {roomId && (
+          <div className="seat-room">
+            room <span className="room-code">{roomId}</span>
+            <button className="room-copy" onClick={copyRoomId} title="Copy room code">
+              {copied ? '✓' : '⧉'}
+            </button>
+          </div>
+        )}
+        {seat(opp, false)}
+      </div>
       <div className="weather-box">
         {weather.length === 0 ? <span className="weather-clear">Clear skies</span> : weather.map((w) => <span key={w}>{WEATHER_LABEL[w]}</span>)}
       </div>
