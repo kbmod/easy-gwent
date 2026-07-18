@@ -46,6 +46,21 @@ export interface PlayerView {
   log: LogEntry[];
 }
 
+/**
+ * Full GameState with hidden info stripped for `seat`.
+ * Opponent hand/deck (and own deck order) become opaque placeholders of the correct length
+ * so UI counters and `legalActions(seat)` still work without leaking card ids.
+ */
+export function redactState(s: GameState, seat: PlayerId): GameState {
+  const out = structuredClone(s);
+  const opp = otherPlayer(seat);
+  out.players[opp].hand = Array(out.players[opp].hand.length).fill('__hidden__');
+  out.players[opp].deck = Array(out.players[opp].deck.length).fill('__hidden__');
+  out.players[seat].deck = Array(out.players[seat].deck.length).fill('__hidden__');
+  out.rngState = 0;
+  return out;
+}
+
 /** Redact full state down to what `seat` may know. Hidden info never leaves the server. */
 export function redact(s: GameState, seat: PlayerId): PlayerView {
   const me = s.players[seat];

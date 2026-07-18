@@ -15,9 +15,11 @@ const FACTIONS: Array<{ id: PlayableFaction; name: string }> = [
 export function MenuScreen({
   onPlayAi,
   onEditDeck,
+  onMultiplayer,
 }: {
   onPlayAi: (faction: PlayableFaction, aiFaction: PlayableFaction, difficulty: Difficulty) => void;
   onEditDeck: (faction: PlayableFaction) => void;
+  onMultiplayer: () => void;
 }) {
   const [faction, setFaction] = useState<PlayableFaction>('northern_realms');
   const [aiFaction, setAiFaction] = useState<PlayableFaction>('nilfgaard');
@@ -56,10 +58,12 @@ export function MenuScreen({
         <button className="btn btn-primary" onClick={() => onPlayAi(faction, aiFaction, difficulty)}>
           Play vs AI
         </button>
+        <button className="btn btn-primary" onClick={onMultiplayer}>
+          Multiplayer
+        </button>
         <button className="btn" onClick={() => onEditDeck(faction)}>
           Edit deck
         </button>
-        <p className="menu-note">Multiplayer coming in a later phase.</p>
       </div>
     </div>
   );

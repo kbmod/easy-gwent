@@ -31,6 +31,18 @@ body {
 .menu-box h3 { margin: 6px 0 0; font-weight: normal; color: #b8a988; }
 .faction-picker { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .menu-note { color: #8a7c60; font-size: 13px; }
+.menu-error { color: #e06c5c; font-size: 13px; margin: 0; }
+.room-code { font-size: 18px; color: #c9a227; letter-spacing: 0.15em; }
+.join-row { display: flex; gap: 8px; align-items: center; }
+.code-input {
+  font-family: inherit; font-size: 16px; padding: 8px 12px; width: 120px;
+  background: #20180f; color: #e8dcc0; border: 1px solid #8a6d3b; border-radius: 4px;
+  text-transform: lowercase;
+}
+.mp-banner {
+  text-align: center; padding: 4px; background: #5c2a2288; border: 1px solid #e06c5c;
+  border-radius: 4px; margin-bottom: 4px; font-size: 14px;
+}
 
 /* ---- game layout ---- */
 .game-screen { display: grid; grid-template-columns: 190px 1fr 230px; gap: 8px; height: 100vh; padding: 8px; }

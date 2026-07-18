@@ -14,6 +14,7 @@ export type ClientMsg =
 export type ServerMsg =
   | { t: 'room_created'; roomId: string }
   | { t: 'joined'; roomId: string; you: PlayerId; opponentFaction: PlayableFaction }
+  /** `state` is always `redactState(full, seat)` — never the authoritative state. */
   | { t: 'state'; state: GameState }
   | { t: 'error'; code: ProtocolErrorCode; message: string }
   | { t: 'opponent_left' };
@@ -24,14 +25,5 @@ export type ProtocolErrorCode =
   | 'invalid_deck'
   | 'illegal_action'
   | 'not_your_turn'
-  | 'bad_message';
-
-/**
- * Redact hidden information before sending state to a player:
- * opponent hand/deck contents are replaced with counts only via
- * empty arrays; consumers must use handCount/deckCount.
- */
-export interface RedactedPlayerView {
-  handCount: number;
-  deckCount: number;
-}
+  | 'bad_message'
+  | 'not_in_room';

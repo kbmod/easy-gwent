@@ -8,6 +8,7 @@ import {
   effectiveStrength,
   boardScore,
   redact,
+  redactState,
   IllegalActionError,
   type GameState,
   type PlayerId,
@@ -171,6 +172,22 @@ describe('scoring', () => {
     s.players[0].rows.siege.hornActive = true;
     // 8 → weather 1 → bond ×2 = 2 → horn ×2 = 4
     expect(effectiveStrength(s, 0, 'siege', c1)).toBe(4);
+  });
+});
+
+describe('redactState', () => {
+  it('hides opponent hand/deck ids and own deck order', () => {
+    const s = newGame();
+    const r = redactState(s, 0);
+    expect(r.players[0].hand).toEqual(s.players[0].hand);
+    expect(r.players[0].deck.every((id) => id === '__hidden__')).toBe(true);
+    expect(r.players[0].deck.length).toBe(s.players[0].deck.length);
+    expect(r.players[1].hand.every((id) => id === '__hidden__')).toBe(true);
+    expect(r.players[1].hand.length).toBe(s.players[1].hand.length);
+    expect(r.players[1].deck.every((id) => id === '__hidden__')).toBe(true);
+    expect(r.rngState).toBe(0);
+    // Authoritative state unchanged
+    expect(s.players[1].hand.every((id) => id !== '__hidden__')).toBe(true);
   });
 });
 
