@@ -41,9 +41,9 @@ function revealState(
   player1: Array<{ instanceId: string; cardId: string }> = [],
 ): GameState {
   const rows = (units: Array<{ instanceId: string; cardId: string }>) => ({
-    melee: { units: [], hornActive: false },
-    ranged: { units, hornActive: false },
-    siege: { units: [], hornActive: false },
+    melee: { units: [], decoys: [], hornActive: false },
+    ranged: { units, decoys: [], hornActive: false },
+    siege: { units: [], decoys: [], hornActive: false },
   });
   return {
     phase: 'play',

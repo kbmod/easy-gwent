@@ -16,6 +16,8 @@ export interface PlacedCard {
 
 export interface RowState {
   units: PlacedCard[];
+  /** Zero-strength Decoys occupying positions until the round ends. */
+  decoys: PlacedCard[];
   hornActive: boolean;
   /** Horn and Mardroeme specials share this row slot. */
   specialCardId?: string;
@@ -78,9 +80,9 @@ export interface GameState {
 export const otherPlayer = (p: PlayerId): PlayerId => (p === 0 ? 1 : 0);
 
 export const emptyRows = (): Record<Row, RowState> => ({
-  melee: { units: [], hornActive: false },
-  ranged: { units: [], hornActive: false },
-  siege: { units: [], hornActive: false },
+  melee: { units: [], decoys: [], hornActive: false },
+  ranged: { units: [], decoys: [], hornActive: false },
+  siege: { units: [], decoys: [], hornActive: false },
 });
 
 export class IllegalActionError extends Error {

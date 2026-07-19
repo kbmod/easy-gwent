@@ -32,6 +32,9 @@ Owner review fixes and editor rework:
   primary-card transition instead of queueing summoned units into later turns,
   and Spy transitions are attributed to the player who played the card rather
   than the opponent whose board receives it.
+- Fixed Decoy battlefield state to match the Witcher 3 rulebook: it visibly
+  replaces the returned unit as a zero-strength row occupant, remains through
+  the round, and enters the graveyard during round cleanup.
 - Added a distinct four-note heroic reveal sting for winning a non-final round:
   the second note falls a fifth below the opening, then two notes leap upward
   to a sustained brass-like finish. Draws and losses retain the subdued

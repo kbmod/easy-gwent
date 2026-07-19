@@ -51,6 +51,9 @@ function BoardRow({
         {rowSpecial?.special === 'mardroeme' ? 'M' : 'H'}
       </div>
       <div className="row-units">
+        {(rs.decoys ?? []).map((decoy) => (
+          <Card key={decoy.instanceId} cardId={decoy.cardId} onHover={onHover} />
+        ))}
         {rs.units.map((u) => {
           const canTarget = mine && targetInstanceIds?.includes(u.instanceId);
           return (

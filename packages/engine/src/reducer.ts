@@ -290,7 +290,8 @@ function playSpecial(s: GameState, rng: Rng, action: PlayCardAction, def: CardDe
       const target = action.targetInstanceId;
       if (!target) throw new IllegalActionError('Decoy requires a target unit');
       for (const row of ROWS) {
-        const units = p.rows[row].units;
+        const rowState = p.rows[row];
+        const units = rowState.units;
         const idx = units.findIndex((u) => u.instanceId === target);
         if (idx >= 0) {
           const u = units[idx]!;
@@ -298,7 +299,13 @@ function playSpecial(s: GameState, rng: Rng, action: PlayCardAction, def: CardDe
           if (d.hero) throw new IllegalActionError('Cannot decoy a hero');
           units.splice(idx, 1);
           p.hand.push(u.cardId);
-          p.graveyard.push(def.id);
+          // Decoy has zero strength but remains where the unit stood until the
+          // round ends. Keep it separate from units so no unit ability, weather,
+          // Horn, Scorch, or targeting rule can affect it.
+          (rowState.decoys ??= []).push({
+            instanceId: `i${s.nextInstance++}`,
+            cardId: def.id,
+          });
           log(s, `Player ${player + 1} decoys ${d.name}`);
           return;
         }
@@ -531,6 +538,8 @@ function endRound(s: GameState, rng: Rng): void {
       }
       rs.units = rs.units.filter((u) => u.kept);
       for (const u of rs.units) delete u.kept;
+      for (const decoy of rs.decoys ?? []) p.graveyard.push(decoy.cardId);
+      rs.decoys = [];
       if (rs.specialCardId) p.graveyard.push(rs.specialCardId);
       rs.hornActive = false;
       delete rs.specialCardId;

@@ -107,12 +107,19 @@ describe('medic', () => {
 });
 
 describe('decoy', () => {
-  it('returns a non-hero unit to hand and discards itself', () => {
+  it('returns a non-hero unit to hand and remains on its row until round end', () => {
     let s = bareGame();
     const placed = place(s, 0, 'nr_ves', 'melee');
     s = playFromHand(s, 0, 'ne_decoy', undefined, placed.instanceId);
     expect(s.players[0].hand).toContain('nr_ves');
     expect(s.players[0].rows.melee.units).toEqual([]);
+    expect(s.players[0].rows.melee.decoys.map((card) => card.cardId)).toEqual(['ne_decoy']);
+    expect(boardScore(s, 0)).toBe(0);
+    expect(s.players[0].graveyard).not.toContain('ne_decoy');
+
+    s = applyAction(s, { type: 'PASS', player: 1 });
+    s = applyAction(s, { type: 'PASS', player: 0 });
+    expect(s.players[0].rows.melee.decoys).toEqual([]);
     expect(s.players[0].graveyard).toContain('ne_decoy');
   });
 });
