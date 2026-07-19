@@ -10,5 +10,5 @@ packages/server/data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
-docs/ROADMAP.md
+docs/
 .claude/

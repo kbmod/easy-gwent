@@ -40,14 +40,29 @@ export function StatusColumn({
     const ps = state.players[p];
     const other: PlayerId = p === 0 ? 1 : 0;
     const leading = totals[p] > totals[other];
+    const recentDiscards = ps.graveyard.slice(-4).reverse();
     return (
       <div className={`seat ${mine ? 'seat-mine' : ''} ${state.turn === p && state.phase === 'play' ? 'seat-active' : ''}`}>
         <div className="seat-main">
           <div className="seat-name">{mine ? 'You' : opponentName ?? 'Opponent'}</div>
           <div className="seat-gems">{'◆'.repeat(ps.gems)}{'◇'.repeat(Math.max(0, 2 - ps.gems))}</div>
           <div className="seat-info">
-            Hand {ps.hand.length} · Deck {ps.deck.length}
+            Hand {ps.hand.length} · Deck {ps.deck.length} · Discard {ps.graveyard.length}
             {ps.passed && <span className="passed"> · PASSED</span>}
+          </div>
+          <div className="discard-pile">
+            <div className="discard-heading">Discard {ps.graveyard.length}</div>
+            {recentDiscards.length > 0 ? (
+              <div className="discard-cards">
+                {recentDiscards.map((id, i) => (
+                  <span key={`${id}-${i}`} title={byId(id).name}>
+                    {byId(id).name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="discard-empty">Empty</div>
+            )}
           </div>
           <div className="seat-leader">
             <div className="seat-leader-row">

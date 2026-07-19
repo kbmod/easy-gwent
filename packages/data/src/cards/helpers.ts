@@ -5,6 +5,7 @@ export interface UnitOpts {
   abilities?: UnitAbility[];
   count?: number;
   musterGroup?: string;
+  musterIds?: string[];
   bondGroup?: string;
   transformsInto?: string;
 }
@@ -29,6 +30,7 @@ export function unit(
     abilities: opts.abilities ?? [],
     count: opts.count ?? 1,
     ...(opts.musterGroup ? { musterGroup: opts.musterGroup } : {}),
+    ...(opts.musterIds ? { musterIds: opts.musterIds } : {}),
     ...(opts.bondGroup ? { bondGroup: opts.bondGroup } : {}),
     ...(opts.transformsInto ? { transformsInto: opts.transformsInto } : {}),
   };

@@ -4,8 +4,8 @@ import type { GameState, PlayerId, PlacedCard } from './state.ts';
 import { IllegalActionError, cloneState, otherPlayer } from './state.ts';
 import { scores } from './scoring.ts';
 import { createRng, shuffle, pick, type Rng } from './rng.ts';
-import { applyLeader } from './abilities/leaders.ts';
-import { unitScorch, globalScorch } from './abilities/scorch.ts';
+import { applyLeader, applyWeatherCard, clearWeather } from './abilities/leaders.ts';
+import { unitScorch, globalScorch, scorchRowIfStrong } from './abilities/scorch.ts';
 
 const ROWS: Row[] = ['melee', 'ranged', 'siege'];
 
@@ -23,7 +23,7 @@ export function applyAction(prev: GameState, action: Action): GameState {
     case 'PLAY_CARD':
       requireTurn(s, action.player, 'play');
       handlePlayCard(s, rng, action);
-      afterMove(s, action.player);
+      afterMove(s, action.player, rng);
       break;
     case 'PLAY_LEADER': {
       requireTurn(s, action.player, 'play');
@@ -32,10 +32,13 @@ export function applyAction(prev: GameState, action: Action): GameState {
       const leader = byId(p.leaderId);
       if (isLeaderCancelled(s, action.player)) throw new IllegalActionError('Leader ability is cancelled');
       if (isPassiveLeader(leader)) throw new IllegalActionError('This leader ability is passive');
+      if (leader.leaderAbility === 'eredin_destroyer_of_worlds' && p.hand.length < 2) {
+        throw new IllegalActionError('Destroyer of Worlds requires 2 cards in hand');
+      }
       p.leaderUsed = true;
       log(s, `Player ${action.player + 1} uses leader: ${leader.name}`);
       applyLeader(s, rng, action.player, leader.leaderAbility!);
-      afterMove(s, action.player);
+      afterMove(s, action.player, rng);
       break;
     }
     case 'RESOLVE_CHOICE':
@@ -46,7 +49,7 @@ export function applyAction(prev: GameState, action: Action): GameState {
       const p = s.players[action.player];
       p.passed = true;
       log(s, `Player ${action.player + 1} passes`);
-      afterMove(s, action.player);
+      afterMove(s, action.player, rng);
       break;
     }
   }
@@ -72,6 +75,7 @@ function requireTurn(s: GameState, player: PlayerId, phase: 'play'): void {
 export function isPassiveLeader(def: CardDef): boolean {
   return (
     def.leaderAbility === 'emhyr_the_white_flame' ||
+    def.leaderAbility === 'emhyr_invader_of_the_north' ||
     def.leaderAbility === 'francesca_daisy_of_the_valley' ||
     def.leaderAbility === 'eredin_treacherous' ||
     def.leaderAbility === 'bran_tuirseach'
@@ -89,6 +93,12 @@ export function placeUnit(s: GameState, player: PlayerId, row: Row, cardId: stri
   return placed;
 }
 
+function queueSummonAvenger(s: GameState, boardPlayer: PlayerId, cardId: string): void {
+  const d = byId(cardId);
+  if (!d.abilities.includes('summon_avenger') || !d.transformsInto) return;
+  s.players[boardPlayer].summonQueue.push(d.transformsInto);
+}
+
 // ── redraw phase ─────────────────────────────────────────────────────
 
 function handleRedraw(s: GameState, rng: Rng, player: PlayerId, handIndex: number | null): void {
@@ -102,10 +112,15 @@ function handleRedraw(s: GameState, rng: Rng, player: PlayerId, handIndex: numbe
     const cardId = p.hand[handIndex];
     if (cardId === undefined) throw new IllegalActionError('Bad hand index');
     p.hand.splice(handIndex, 1);
-    p.deck.push(cardId);
-    shuffle(rng, p.deck);
+    p.redrawPile.push(cardId);
     p.hand.push(p.deck.pop()!);
     p.redrawsLeft--;
+  }
+
+  if (p.redrawsLeft <= 0 && p.redrawPile.length) {
+    p.deck.push(...p.redrawPile);
+    p.redrawPile = [];
+    shuffle(rng, p.deck);
   }
 
   if (s.players[0].redrawsLeft <= 0 && s.players[1].redrawsLeft <= 0) {
@@ -160,65 +175,112 @@ function playUnit(s: GameState, rng: Rng, action: PlayCardAction, def: CardDef):
   placeUnit(s, player, row, def.id);
   log(s, `Player ${player + 1} plays ${def.name} (${row})`);
 
-  // Muster: pull all same-group cards from hand and deck
-  if (def.abilities.includes('muster') && def.musterGroup) {
-    const group = def.musterGroup;
-    const pull = (arr: string[]) => {
-      for (let i = arr.length - 1; i >= 0; i--) {
-        const d = byId(arr[i]!);
-        if (d.musterGroup === group && d.type === 'unit') {
-          arr.splice(i, 1);
-          const r = (d.rows ?? ['melee'])[0]!;
-          placeUnit(s, player, r, d.id);
-        }
+  triggerUnitAbilities(s, rng, player, row, def);
+}
+
+function pullMusterCards(s: GameState, player: PlayerId, def: CardDef): void {
+  if (!def.abilities.includes('muster')) return;
+  const p = s.players[player];
+  const explicitIds = new Set(def.musterIds ?? []);
+  const matches = (id: string): boolean => {
+    const candidate = byId(id);
+    if (candidate.type !== 'unit') return false;
+    if (explicitIds.size) return explicitIds.has(id);
+    return Boolean(def.musterGroup && candidate.musterGroup === def.musterGroup);
+  };
+
+  const pull = (cards: string[]): void => {
+    for (let i = cards.length - 1; i >= 0; i--) {
+      const id = cards[i]!;
+      if (matches(id)) {
+        cards.splice(i, 1);
+        const summoned = byId(id);
+        const summonedRow = (summoned.rows ?? ['melee'])[0]!;
+        placeUnit(s, player, summonedRow, id);
+        log(s, `Player ${player + 1} musters ${summoned.name}`);
       }
-    };
-    pull(p.hand);
-    pull(p.deck);
-  }
+    }
+  };
+  pull(p.hand);
+  pull(p.deck);
+}
 
-  // Unit scorch (Villentretenmerth etc.): melee-row conditional scorch
+function triggerUnitAbilities(
+  s: GameState,
+  rng: Rng,
+  player: PlayerId,
+  row: Row,
+  def: CardDef,
+): void {
+  pullMusterCards(s, player, def);
+
   if (def.abilities.includes('scorch')) {
-    unitScorch(s, player, row);
+    if (def.id === 'ne_villentretenmerth') {
+      scorchRowIfStrong(s, otherPlayer(player), 'melee', 10);
+    } else if (def.id === 'mo_toad') {
+      scorchRowIfStrong(s, otherPlayer(player), 'ranged', 10);
+    } else if (def.id === 'sc_schirru') {
+      scorchRowIfStrong(s, otherPlayer(player), 'siege', 10);
+    } else if (def.id === 'sk_clan_dimun_pirate') {
+      globalScorch(s);
+    } else {
+      unitScorch(s, player, row);
+    }
   }
 
-  // Medic: open a pending choice over own graveyard units (non-hero)
+  if (def.abilities.includes('mardroeme')) transformBerserkers(s, player, row);
   if (def.abilities.includes('medic')) {
-    openMedicChoice(s, player);
+    openMedicChoice(s, rng, player);
   }
 }
 
-export function openMedicChoice(s: GameState, player: PlayerId): void {
+function isRandomRestoreActive(s: GameState): boolean {
+  return ([0, 1] as PlayerId[]).some(
+    (pid) =>
+      byId(s.players[pid].leaderId).leaderAbility === 'emhyr_invader_of_the_north' &&
+      !isLeaderCancelled(s, pid),
+  );
+}
+
+export function openMedicChoice(s: GameState, rng: Rng, player: PlayerId): void {
   const options = s.players[player].graveyard.filter((id) => {
     const d = byId(id);
     return d.type === 'unit' && !d.hero;
   });
   if (options.length === 0) return;
+  if (isRandomRestoreActive(s)) {
+    reviveFromGraveyard(s, rng, player, pick(rng, options));
+    return;
+  }
   s.pendingChoice = { player, kind: 'medic', options: [...new Set(options)], remaining: 1 };
 }
 
 function playSpecial(s: GameState, rng: Rng, action: PlayCardAction, def: CardDef): void {
   const player = action.player;
   const p = s.players[player];
+  let discardAfterResolution = true;
 
   switch (def.special) {
     case 'frost':
     case 'fog':
     case 'rain':
-      s.weather[def.special] = true;
-      break;
     case 'storm':
-      s.weather.fog = true;
-      s.weather.rain = true;
+      applyWeatherCard(s, player, def.id);
+      discardAfterResolution = false;
       break;
     case 'clear':
-      s.weather.frost = s.weather.fog = s.weather.rain = false;
+      clearWeather(s);
       break;
     case 'horn': {
       if (!action.row) throw new IllegalActionError('Horn requires a row');
       const rowState = p.rows[action.row];
-      if (rowState.hornActive) throw new IllegalActionError('Row already has a horn');
+      const hornUnit = rowState.units.some((u) => byId(u.cardId).abilities.includes('horn'));
+      if (rowState.hornActive || rowState.specialCardId || hornUnit) {
+        throw new IllegalActionError('Row already has a special effect');
+      }
       rowState.hornActive = true;
+      rowState.specialCardId = def.id;
+      discardAfterResolution = false;
       break;
     }
     case 'scorch':
@@ -236,24 +298,28 @@ function playSpecial(s: GameState, rng: Rng, action: PlayCardAction, def: CardDe
           if (d.hero) throw new IllegalActionError('Cannot decoy a hero');
           units.splice(idx, 1);
           p.hand.push(u.cardId);
-          // Decoy stays on the board as a 0-strength placeholder? In W3 it replaces the unit.
-          placeUnit(s, player, row, def.id === 'ne_decoy' ? 'ne_decoy' : def.id);
+          p.graveyard.push(def.id);
           log(s, `Player ${player + 1} decoys ${d.name}`);
-          s.players[player].graveyard = s.players[player].graveyard; // no-op clarity
-          return; // decoy consumed onto board, not graveyard
+          return;
         }
       }
       throw new IllegalActionError('Decoy target not found on your board');
     }
     case 'mardroeme': {
       if (!action.row) throw new IllegalActionError('Mardroeme requires a row');
+      const rowState = p.rows[action.row];
+      if (rowState.hornActive || rowState.specialCardId) {
+        throw new IllegalActionError('Row already has a special effect');
+      }
+      rowState.specialCardId = def.id;
+      discardAfterResolution = false;
       transformBerserkers(s, player, action.row);
       break;
     }
     default:
       throw new IllegalActionError(`Unhandled special: ${def.id}`);
   }
-  p.graveyard.push(def.id);
+  if (discardAfterResolution) p.graveyard.push(def.id);
   log(s, `Player ${player + 1} plays ${def.name}`);
 }
 
@@ -274,42 +340,133 @@ function handleResolveChoice(s: GameState, rng: Rng, player: PlayerId, cardId: s
   if (!pc) throw new IllegalActionError('No pending choice');
   if (pc.player !== player) throw new IllegalActionError('Not your choice');
 
-  if (pc.kind === 'medic') {
-    s.pendingChoice = null;
-    if (cardId === null) return; // declined
-    if (!pc.options.includes(cardId)) throw new IllegalActionError('Invalid medic target');
-    const p = s.players[player];
-    const gi = p.graveyard.indexOf(cardId);
-    if (gi < 0) throw new IllegalActionError('Card no longer in graveyard');
-    p.graveyard.splice(gi, 1);
-    const def = byId(cardId);
-    // Revived card is played immediately (chain medics)
-    if (def.abilities.includes('spy')) {
-      const row = (def.rows ?? ['melee'])[0]!;
-      placeUnit(s, otherPlayer(player), row, def.id);
-      for (let i = 0; i < 2 && p.deck.length; i++) p.hand.push(p.deck.pop()!);
-    } else {
-      const row = (def.rows ?? ['melee'])[0]!;
-      placeUnit(s, player, row, def.id);
-      if (def.abilities.includes('scorch')) unitScorch(s, player, row);
-    }
-    log(s, `Player ${player + 1} revives ${def.name}`);
-    if (def.abilities.includes('medic')) openMedicChoice(s, player);
-    return;
-  }
+  const validate = (): string => {
+    if (cardId === null || !pc.options.includes(cardId)) throw new IllegalActionError('Invalid choice');
+    return cardId;
+  };
+  const finish = (): void => {
+    if (!s.pendingChoice) afterMove(s, player, rng);
+  };
 
-  throw new IllegalActionError(`Unhandled choice kind: ${pc.kind}`);
+  switch (pc.kind) {
+    case 'first_player': {
+      if (s.phase !== 'play') throw new IllegalActionError('Finish redraws before choosing the first player');
+      const chosen = validate();
+      if (chosen !== '0' && chosen !== '1') throw new IllegalActionError('Invalid first player');
+      s.turn = Number(chosen) as PlayerId;
+      s.pendingChoice = null;
+      log(s, `Player ${Number(chosen) + 1} will go first`);
+      return;
+    }
+    case 'medic':
+      s.pendingChoice = null;
+      if (cardId !== null) reviveFromGraveyard(s, rng, player, validate());
+      finish();
+      return;
+    case 'leader_opponent_graveyard': {
+      s.pendingChoice = null;
+      const id = validate();
+      const graveyard = s.players[otherPlayer(player)].graveyard;
+      const index = graveyard.indexOf(id);
+      if (index < 0) throw new IllegalActionError('Card no longer in graveyard');
+      graveyard.splice(index, 1);
+      s.players[player].hand.push(id);
+      finish();
+      return;
+    }
+    case 'leader_own_graveyard': {
+      s.pendingChoice = null;
+      const id = validate();
+      const graveyard = s.players[player].graveyard;
+      const index = graveyard.indexOf(id);
+      if (index < 0) throw new IllegalActionError('Card no longer in graveyard');
+      graveyard.splice(index, 1);
+      s.players[player].hand.push(id);
+      finish();
+      return;
+    }
+    case 'leader_weather': {
+      s.pendingChoice = null;
+      const id = validate();
+      const deck = s.players[player].deck;
+      const index = deck.indexOf(id);
+      if (index < 0) throw new IllegalActionError('Card no longer in deck');
+      deck.splice(index, 1);
+      applyWeatherCard(s, player, id);
+      finish();
+      return;
+    }
+    case 'leader_discard': {
+      const id = validate();
+      const p = s.players[player];
+      const index = p.hand.indexOf(id);
+      if (index < 0) throw new IllegalActionError('Card no longer in hand');
+      p.hand.splice(index, 1);
+      p.graveyard.push(id);
+      if (pc.remaining > 1 && p.hand.length) {
+        s.pendingChoice = { ...pc, options: [...new Set(p.hand)], remaining: pc.remaining - 1 };
+      } else if (p.deck.length) {
+        s.pendingChoice = {
+          player,
+          kind: 'leader_draw',
+          options: [...new Set(p.deck)],
+          remaining: 1,
+        };
+      } else {
+        s.pendingChoice = null;
+      }
+      finish();
+      return;
+    }
+    case 'leader_draw': {
+      s.pendingChoice = null;
+      const id = validate();
+      const p = s.players[player];
+      const index = p.deck.indexOf(id);
+      if (index < 0) throw new IllegalActionError('Card no longer in deck');
+      p.deck.splice(index, 1);
+      p.hand.push(id);
+      finish();
+      return;
+    }
+    case 'leader_peek':
+      if (cardId !== null) throw new IllegalActionError('Close the preview to continue');
+      s.pendingChoice = null;
+      finish();
+      return;
+    default:
+      throw new IllegalActionError(`Unhandled choice kind: ${pc.kind}`);
+  }
+}
+
+function reviveFromGraveyard(s: GameState, rng: Rng, player: PlayerId, cardId: string): CardDef {
+  const p = s.players[player];
+  const gi = p.graveyard.indexOf(cardId);
+  if (gi < 0) throw new IllegalActionError('Card no longer in graveyard');
+  p.graveyard.splice(gi, 1);
+  const def = byId(cardId);
+  if (def.abilities.includes('spy')) {
+    const row = (def.rows ?? ['melee'])[0]!;
+    placeUnit(s, otherPlayer(player), row, def.id);
+    for (let i = 0; i < 2 && p.deck.length; i++) p.hand.push(p.deck.pop()!);
+  } else {
+    const row = (def.rows ?? ['melee'])[0]!;
+    placeUnit(s, player, row, def.id);
+    triggerUnitAbilities(s, rng, player, row, def);
+  }
+  log(s, `Player ${player + 1} revives ${def.name}`);
+  return def;
 }
 
 // ── turn / round flow ────────────────────────────────────────────────
 
 /** After a player's move (incl. resolving into no pending choice), advance turn or end round. */
-function afterMove(s: GameState, mover: PlayerId): void {
+function afterMove(s: GameState, mover: PlayerId, rng: Rng): void {
   if (s.pendingChoice) return; // wait for resolution; turn does not advance yet
 
   const [a, b] = s.players;
   if (a.passed && b.passed) {
-    endRound(s);
+    endRound(s, rng);
     return;
   }
   const opp = otherPlayer(mover);
@@ -323,18 +480,21 @@ function afterMove(s: GameState, mover: PlayerId): void {
   if (!cur.passed && cur.hand.length === 0 && !canUseLeader(s, s.turn)) {
     cur.passed = true;
     log(s, `Player ${s.turn + 1} is out of cards and passes`);
-    if (s.players[0].passed && s.players[1].passed) endRound(s);
+    if (s.players[0].passed && s.players[1].passed) endRound(s, rng);
     else s.turn = otherPlayer(s.turn);
   }
 }
 
-function canUseLeader(s: GameState, player: PlayerId): boolean {
+export function canUseLeader(s: GameState, player: PlayerId): boolean {
   const p = s.players[player];
   if (p.leaderUsed || isLeaderCancelled(s, player)) return false;
-  return !isPassiveLeader(byId(p.leaderId));
+  const leader = byId(p.leaderId);
+  if (isPassiveLeader(leader)) return false;
+  if (leader.leaderAbility === 'eredin_destroyer_of_worlds' && p.hand.length < 2) return false;
+  return true;
 }
 
-function endRound(s: GameState): void {
+function endRound(s: GameState, rng: Rng): void {
   const [sa, sb] = scores(s);
   let winner: PlayerId | null;
   if (sa > sb) winner = 0;
@@ -355,9 +515,6 @@ function endRound(s: GameState): void {
     s.players[otherPlayer(winner)].gems--;
   }
 
-  const rng = createRng(0);
-  rng.state = s.rngState;
-
   // Faction round-end passives before clearing the board
   applyRoundEndPassives(s, rng, winner);
 
@@ -368,19 +525,19 @@ function endRound(s: GameState): void {
       const rs = p.rows[row];
       for (const u of rs.units) {
         const d = byId(u.cardId);
-        // Spies on my side belong to the opponent's graveyard
-        if (d.abilities.includes('spy')) s.players[otherPlayer(pid)].graveyard.push(u.cardId);
-        else if (!u.kept) p.graveyard.push(u.cardId);
+        if (u.kept) continue;
+        p.graveyard.push(u.cardId);
+        queueSummonAvenger(s, pid, u.cardId);
       }
       rs.units = rs.units.filter((u) => u.kept);
       for (const u of rs.units) delete u.kept;
+      if (rs.specialCardId) p.graveyard.push(rs.specialCardId);
       rs.hornActive = false;
+      delete rs.specialCardId;
     }
     p.passed = false;
   }
-  s.weather = { frost: false, fog: false, rain: false };
-  s.rngState = rng.state;
-
+  clearWeather(s);
   // Game over?
   if (s.players[0].gems <= 0 || s.players[1].gems <= 0) {
     s.phase = 'finished';
@@ -398,8 +555,9 @@ function endRound(s: GameState): void {
   }
 
   s.round++;
-  // Loser of the round leads the next one; on draw, previous turn holder leads
-  s.turn = winner !== null ? otherPlayer(winner) : s.turn;
+  applyStartRoundPassives(s, rng);
+  // The previous round winner leads; a draw keeps the existing turn holder.
+  s.turn = winner !== null ? winner : s.turn;
   log(s, `Round ${s.round} begins`);
 }
 
@@ -425,14 +583,22 @@ function applyRoundEndPassives(s: GameState, rng: Rng, winner: PlayerId | null):
         log(s, `Player ${pid + 1} keeps ${byId(keep.u.cardId).name} (Monsters)`);
       }
     }
-    // Skellige: at the start of round 3, revive 2 random non-hero units
-    if (p.faction === 'skellige' && s.round === 2 && s.roundHistory.length === 2) {
-      // handled below via round check after increment; see note
+  }
+}
+
+function applyStartRoundPassives(s: GameState, rng: Rng): void {
+  for (const pid of [0, 1] as PlayerId[]) {
+    const p = s.players[pid];
+    while (p.summonQueue.length) {
+      const id = p.summonQueue.shift()!;
+      const d = byId(id);
+      const row = (d.rows ?? ['melee'])[0]!;
+      placeUnit(s, pid, row, id);
+      log(s, `Player ${pid + 1} summons ${d.name}`);
     }
   }
 
-  // Skellige passive: after round 2 ends (entering round 3), revive 2 random units
-  if (s.roundHistory.length === 2) {
+  if (s.round === 3) {
     for (const pid of [0, 1] as PlayerId[]) {
       const p = s.players[pid];
       if (p.faction !== 'skellige') continue;
@@ -443,11 +609,8 @@ function applyRoundEndPassives(s: GameState, rng: Rng, winner: PlayerId | null):
         });
         if (!opts.length) break;
         const id = pick(rng, opts);
-        p.graveyard.splice(p.graveyard.indexOf(id), 1);
-        const d = byId(id);
-        const row = (d.rows ?? ['melee'])[0]!;
-        placeUnit(s, pid, row, id);
-        log(s, `Player ${pid + 1} revives ${d.name} (Skellige)`);
+        reviveFromGraveyard(s, rng, pid, id);
+        log(s, `Player ${pid + 1} returns ${byId(id).name} (Skellige)`);
       }
     }
   }

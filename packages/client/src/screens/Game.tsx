@@ -141,7 +141,17 @@ export function GameScreen({ faction, aiFaction, difficulty, onExit }: GameScree
   const canLeader = myMove && legal.some((a) => a.type === 'PLAY_LEADER');
 
   const redrawing = state.phase === 'redraw' && me.redrawsLeft > 0;
-  const medic = state.pendingChoice?.kind === 'medic' && state.pendingChoice.player === HUMAN ? state.pendingChoice : null;
+  const pending = state.phase === 'play' && state.pendingChoice?.player === HUMAN ? state.pendingChoice : null;
+  const cardChoice = pending && pending.kind !== 'first_player' ? pending : null;
+  const choiceTitle: Record<string, string> = {
+    medic: 'Medic: choose a card to revive',
+    leader_opponent_graveyard: "Choose from your opponent's discard pile",
+    leader_own_graveyard: 'Choose from your discard pile',
+    leader_discard: `Discard a card (${cardChoice?.remaining ?? 0} remaining)`,
+    leader_draw: 'Choose a card to draw',
+    leader_weather: 'Choose a weather card',
+    leader_peek: "Opponent's cards",
+  };
 
   const finished = state.phase === 'finished';
   const resultText = finished
@@ -215,12 +225,31 @@ export function GameScreen({ faction, aiFaction, difficulty, onExit }: GameScree
           onDecline={() => dispatch({ type: 'REDRAW', player: HUMAN, handIndex: null })}
         />
       )}
-      {medic && (
+      {pending?.kind === 'first_player' && (
+        <div className="carousel-overlay">
+          <div className="carousel">
+            <h2>Choose who goes first</h2>
+            <div className="menu-actions">
+              <button className="btn" onClick={() => dispatch({ type: 'RESOLVE_CHOICE', player: HUMAN, cardId: '0' })}>
+                You go first
+              </button>
+              <button className="btn" onClick={() => dispatch({ type: 'RESOLVE_CHOICE', player: HUMAN, cardId: '1' })}>
+                Opponent goes first
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {cardChoice && (
         <CarouselPicker
-          title="Medic: choose a card to revive"
-          cardIds={medic.options}
-          onPick={(i) => dispatch({ type: 'RESOLVE_CHOICE', player: HUMAN, cardId: medic.options[i]! })}
-          declineLabel="Decline"
+          title={choiceTitle[cardChoice.kind] ?? 'Choose a card'}
+          cardIds={cardChoice.options}
+          onPick={
+            cardChoice.kind === 'leader_peek'
+              ? undefined
+              : (i) => dispatch({ type: 'RESOLVE_CHOICE', player: HUMAN, cardId: cardChoice.options[i]! })
+          }
+          declineLabel={cardChoice.kind === 'leader_peek' ? 'Done' : cardChoice.kind === 'medic' ? 'Decline' : undefined}
           onDecline={() => dispatch({ type: 'RESOLVE_CHOICE', player: HUMAN, cardId: null })}
         />
       )}

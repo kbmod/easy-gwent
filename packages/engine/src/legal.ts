@@ -1,7 +1,7 @@
 import { byId, type Row } from '@gwent/data';
 import type { Action } from './actions.ts';
 import type { GameState, PlayerId } from './state.ts';
-import { isLeaderCancelled, isPassiveLeader } from './reducer.ts';
+import { canUseLeader } from './reducer.ts';
 
 const ROWS: Row[] = ['melee', 'ranged', 'siege'];
 
@@ -24,9 +24,13 @@ export function legalActions(s: GameState, player: PlayerId): Action[] {
 
   if (s.pendingChoice) {
     if (s.pendingChoice.player !== player) return actions;
-    actions.push({ type: 'RESOLVE_CHOICE', player, cardId: null });
-    for (const id of s.pendingChoice.options) {
-      actions.push({ type: 'RESOLVE_CHOICE', player, cardId: id });
+    if (s.pendingChoice.kind === 'medic' || s.pendingChoice.kind === 'leader_peek') {
+      actions.push({ type: 'RESOLVE_CHOICE', player, cardId: null });
+    }
+    if (s.pendingChoice.kind !== 'leader_peek') {
+      for (const id of s.pendingChoice.options) {
+        actions.push({ type: 'RESOLVE_CHOICE', player, cardId: id });
+      }
     }
     return actions;
   }
@@ -45,12 +49,15 @@ export function legalActions(s: GameState, player: PlayerId): Action[] {
       switch (def.special) {
         case 'horn':
           for (const row of ROWS) {
-            if (!p.rows[row].hornActive) actions.push({ type: 'PLAY_CARD', player, handIndex: i, row });
+            const hasHornUnit = p.rows[row].units.some((u) => byId(u.cardId).abilities.includes('horn'));
+            if (!p.rows[row].hornActive && !p.rows[row].specialCardId && !hasHornUnit) {
+              actions.push({ type: 'PLAY_CARD', player, handIndex: i, row });
+            }
           }
           break;
         case 'mardroeme':
           for (const row of ROWS) {
-            if (p.rows[row].units.some((u) => byId(u.cardId).abilities.includes('berserker'))) {
+            if (!p.rows[row].hornActive && !p.rows[row].specialCardId) {
               actions.push({ type: 'PLAY_CARD', player, handIndex: i, row });
             }
           }
@@ -71,7 +78,7 @@ export function legalActions(s: GameState, player: PlayerId): Action[] {
     }
   }
 
-  if (!p.leaderUsed && !isLeaderCancelled(s, player) && !isPassiveLeader(byId(p.leaderId))) {
+  if (canUseLeader(s, player)) {
     actions.push({ type: 'PLAY_LEADER', player });
   }
 

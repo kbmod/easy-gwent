@@ -434,6 +434,35 @@ body::after {
 .room-copy:hover { border-color: #c9a227; color: #f5d76e; }
 .seat-gems { color: #b3202a; letter-spacing: 2px; font-size: 16px; }
 .seat-info { font-size: 13px; color: #b8a988; }
+.discard-pile {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid #ffffff12;
+  font-size: 11px;
+  color: #8f846b;
+}
+.discard-heading {
+  color: #b8a988;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.discard-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.discard-cards span {
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 5px;
+  border: 1px solid #4a3a24;
+  border-radius: 4px;
+  background: #00000022;
+}
+.discard-empty { margin-top: 3px; color: #6f644e; }
 .passed { color: #e06c5c; font-weight: bold; }
 .seat-leader { font-size: 13px; margin-top: 6px; }
 .seat-leader-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -599,6 +628,7 @@ body::after {
   .status-col .opp-block .seat { flex: 1; }
   .status-col .seat { flex: 1; padding: 4px 6px; gap: 2px; }
   .status-col .weather-box, .status-col .round-info { font-size: 11px; }
+  .discard-pile { display: none; }
   .game-center { flex: 1; min-height: 0; }
   /* Side panel: compact horizontal preview + info, no log */
   .side-panel { flex-direction: row; gap: 6px; min-height: 0; }

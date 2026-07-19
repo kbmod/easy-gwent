@@ -55,8 +55,10 @@ export function redactState(s: GameState, seat: PlayerId): GameState {
   const out = structuredClone(s);
   const opp = otherPlayer(seat);
   out.players[opp].hand = Array(out.players[opp].hand.length).fill('__hidden__');
+  out.players[opp].redrawPile = Array(out.players[opp].redrawPile.length).fill('__hidden__');
   out.players[opp].deck = Array(out.players[opp].deck.length).fill('__hidden__');
   out.players[seat].deck = Array(out.players[seat].deck.length).fill('__hidden__');
+  if (out.pendingChoice?.player !== seat) out.pendingChoice = null;
   out.rngState = 0;
   return out;
 }

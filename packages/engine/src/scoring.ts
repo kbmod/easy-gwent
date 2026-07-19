@@ -23,7 +23,8 @@ export function effectiveStrength(state: GameState, player: PlayerId, row: Row, 
   // Weather: reduces to 1 (Bran passive: halves, rounded up, min 1)
   if (state.weather[WEATHER_FOR_ROW[row]]) {
     const leader = byId(state.players[player].leaderId);
-    if (leader.leaderAbility === 'bran_tuirseach') {
+    const opponentLeader = byId(state.players[player === 0 ? 1 : 0].leaderId);
+    if (leader.leaderAbility === 'bran_tuirseach' && opponentLeader.leaderAbility !== 'emhyr_the_white_flame') {
       s = Math.max(1, Math.ceil(s / 2));
     } else {
       s = 1;
@@ -42,11 +43,13 @@ export function effectiveStrength(state: GameState, player: PlayerId, row: Row, 
   ).length;
   s += morale;
 
-  // Eredin: Treacherous (passive) — doubles the strength of spy cards on your side
-  if (
-    def.abilities.includes('spy') &&
-    byId(state.players[player].leaderId).leaderAbility === 'eredin_treacherous'
-  ) {
+  // Treacherous doubles every spy on the board, unless White Flame cancels it.
+  const treacherousActive = ([0, 1] as PlayerId[]).some((pid) => {
+    const leader = byId(state.players[pid].leaderId);
+    const opponent = byId(state.players[pid === 0 ? 1 : 0].leaderId);
+    return leader.leaderAbility === 'eredin_treacherous' && opponent.leaderAbility !== 'emhyr_the_white_flame';
+  });
+  if (def.abilities.includes('spy') && treacherousActive) {
     s *= 2;
   }
 

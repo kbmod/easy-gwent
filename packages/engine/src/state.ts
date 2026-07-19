@@ -16,13 +16,23 @@ export interface PlacedCard {
 
 export interface RowState {
   units: PlacedCard[];
-  hornActive: boolean; // commander's horn special placed on this row
+  hornActive: boolean;
+  /** Horn and Mardroeme specials share this row slot. */
+  specialCardId?: string;
 }
 
 export interface PendingChoice {
   player: PlayerId;
-  kind: 'medic' | 'redraw';
-  /** medic: graveyard card ids eligible for revival. redraw: remaining redraws allowed. */
+  kind:
+    | 'medic'
+    | 'first_player'
+    | 'leader_opponent_graveyard'
+    | 'leader_own_graveyard'
+    | 'leader_discard'
+    | 'leader_draw'
+    | 'leader_weather'
+    | 'leader_peek';
+  /** Card ids, except first_player which uses the strings "0" and "1". */
   options: string[];
   remaining: number;
 }
@@ -33,7 +43,9 @@ export interface PlayerState {
   leaderUsed: boolean;
   deck: string[]; // card ids, top = end
   hand: string[];
+  redrawPile: string[]; // mulliganed cards held aside until this player finishes redraws
   graveyard: string[];
+  summonQueue: string[]; // summon-avenger cards waiting for the next round
   rows: Record<Row, RowState>;
   passed: boolean;
   gems: number; // life tokens, start at 2
@@ -51,6 +63,8 @@ export interface GameState {
   turn: PlayerId; // whose action is expected (also target of pendingChoice if set)
   players: [PlayerState, PlayerState];
   weather: Record<WeatherKind, boolean>;
+  /** Weather specials remain in play until cleared or the round ends. */
+  activeWeather: Array<{ player: PlayerId; cardId: string }>;
   pendingChoice: PendingChoice | null;
   roundHistory: Array<{ scores: [number, number]; winner: PlayerId | null }>;
   winner: PlayerId | null; // null while playing; also null on draw when phase==='finished' && drawn

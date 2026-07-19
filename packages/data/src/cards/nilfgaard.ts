@@ -14,6 +14,11 @@ export const NILFGAARD_CARDS: CardDef[] = [
   unit(F, 'nf_stefan_skellen', 'Stefan Skellen', 9, ['melee'], { abilities: ['spy'] }),
   unit(F, 'nf_vattier', 'Vattier de Rideaux', 4, ['melee'], { abilities: ['spy'] }),
   // ─ Units ─
+  unit(F, 'nf_etolian_archers', 'Etolian Auxiliary Archers', 1, ['ranged'], { abilities: ['medic'], count: 2 }),
+  unit(F, 'nf_young_emissary', 'Young Emissary', 5, ['melee'], {
+    abilities: ['tight_bond'], bondGroup: 'young_emissary', count: 2,
+  }),
+  unit(F, 'nf_vreemde', 'Vreemde', 2, ['melee']),
   unit(F, 'nf_albrich', 'Albrich', 2, ['ranged']),
   unit(F, 'nf_assire', 'Assire var Anahid', 6, ['ranged']),
   unit(F, 'nf_cynthia', 'Cynthia', 4, ['ranged']),

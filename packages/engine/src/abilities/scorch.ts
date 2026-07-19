@@ -11,8 +11,16 @@ function destroy(s: GameState, player: PlayerId, row: Row, instanceIds: Set<stri
   rs.units = rs.units.filter((u) => !instanceIds.has(u.instanceId));
   for (const u of dead) {
     const d = byId(u.cardId);
-    if (d.abilities.includes('spy')) s.players[otherPlayer(player)].graveyard.push(u.cardId);
-    else s.players[player].graveyard.push(u.cardId);
+    s.players[player].graveyard.push(u.cardId);
+    if (d.abilities.includes('summon_avenger') && d.transformsInto) {
+      const summoned = byId(d.transformsInto);
+      const row = (summoned.rows ?? ['melee'])[0]!;
+      s.players[player].rows[row].units.push({
+        instanceId: `i${s.nextInstance++}`,
+        cardId: summoned.id,
+      });
+      s.log.push({ turn: s.turnCount, text: `${summoned.name} is summoned` });
+    }
     s.log.push({ turn: s.turnCount, text: `${d.name} is scorched` });
   }
 }

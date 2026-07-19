@@ -10,7 +10,9 @@ export const MONSTERS_CARDS: CardDef[] = [
   unit(F, 'mo_imlerith', 'Imlerith', 10, ['melee'], { hero: true }),
   unit(F, 'mo_draug', 'Draug', 10, ['melee'], { hero: true }),
   // ─ Muster packs ─
-  unit(F, 'mo_arachas_behemoth', 'Arachas Behemoth', 6, ['siege'], { abilities: ['muster'], musterGroup: 'arachas' }),
+  unit(F, 'mo_arachas_behemoth', 'Arachas Behemoth', 6, ['siege'], {
+    abilities: ['muster'], musterIds: ['mo_arachas'],
+  }),
   unit(F, 'mo_arachas', 'Arachas', 4, ['melee'], { abilities: ['muster'], musterGroup: 'arachas', count: 3 }),
   unit(F, 'mo_crone_brewess', 'Crone: Brewess', 6, ['melee'], { abilities: ['muster'], musterGroup: 'crone' }),
   unit(F, 'mo_crone_weavess', 'Crone: Weavess', 6, ['melee'], { abilities: ['muster'], musterGroup: 'crone' }),
@@ -23,7 +25,7 @@ export const MONSTERS_CARDS: CardDef[] = [
   unit(F, 'mo_ghoul', 'Ghoul', 1, ['melee'], { abilities: ['muster'], musterGroup: 'ghoul', count: 3 }),
   unit(F, 'mo_nekker', 'Nekker', 2, ['melee'], { abilities: ['muster'], musterGroup: 'nekker', count: 3 }),
   // ─ Units ─
-  unit(F, 'mo_toad', 'Toad', 7, ['melee', 'ranged']),
+  unit(F, 'mo_toad', 'Toad', 7, ['ranged'], { abilities: ['scorch'] }),
   unit(F, 'mo_frightener', 'Frightener', 5, ['melee']),
   unit(F, 'mo_werewolf', 'Werewolf', 5, ['melee']),
   unit(F, 'mo_fiend', 'Fiend', 6, ['melee']),
@@ -33,7 +35,7 @@ export const MONSTERS_CARDS: CardDef[] = [
   unit(F, 'mo_botchling', 'Botchling', 4, ['melee']),
   unit(F, 'mo_foglet', 'Foglet', 2, ['melee']),
   unit(F, 'mo_wyvern', 'Wyvern', 2, ['ranged']),
-  unit(F, 'mo_harpy', 'Harpy', 2, ['ranged']),
+  unit(F, 'mo_harpy', 'Harpy', 2, ['melee', 'ranged']),
   unit(F, 'mo_celaeno_harpy', 'Celaeno Harpy', 2, ['melee', 'ranged']),
   unit(F, 'mo_cockatrice', 'Cockatrice', 2, ['ranged']),
   unit(F, 'mo_endrega', 'Endrega', 2, ['ranged']),

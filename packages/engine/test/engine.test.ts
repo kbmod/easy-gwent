@@ -76,10 +76,26 @@ describe('setup', () => {
     expect(s.players[0].redrawsLeft).toBe(1);
   });
 
-  it("Scoia'tael goes first against a non-Scoia'tael deck", () => {
+  it('holds mulliganed cards aside until redraws are finished', () => {
+    let s = createGame(3, [testDeck('northern_realms'), testDeck('nilfgaard')]);
+    s.players[0].hand[0] = 'nr_ves';
+    s.players[0].deck = ['nr_sile'];
+    s = applyAction(s, { type: 'REDRAW', player: 0, handIndex: 0 });
+    expect(s.players[0].hand).toContain('nr_sile');
+    expect(s.players[0].redrawPile).toEqual(['nr_ves']);
+    expect(s.players[0].deck).toEqual([]);
+    s = applyAction(s, { type: 'REDRAW', player: 0, handIndex: null });
+    expect(s.players[0].redrawPile).toEqual([]);
+    expect(s.players[0].deck).toEqual(['nr_ves']);
+  });
+
+  it("Scoia'tael chooses who goes first against a non-Scoia'tael deck", () => {
     for (const seed of [1, 2, 3, 4, 5]) {
-      const s = createGame(seed, [testDeck('nilfgaard'), testDeck('scoiatael')]);
-      expect(s.turn).toBe(1);
+      let s = createGame(seed, [testDeck('nilfgaard'), testDeck('scoiatael')]);
+      expect(s.pendingChoice).toMatchObject({ player: 1, kind: 'first_player', options: ['0', '1'] });
+      s = skipRedraw(s);
+      s = applyAction(s, { type: 'RESOLVE_CHOICE', player: 1, cardId: '0' });
+      expect(s.turn).toBe(0);
     }
   });
 });
@@ -115,6 +131,16 @@ describe('turn flow', () => {
     expect(s.roundHistory.length).toBe(1);
     expect(s.round).toBe(2);
     expect(s.players[0].gems + s.players[1].gems).toBeLessThanOrEqual(3);
+  });
+
+  it('the round winner starts the next round', () => {
+    let s = newGame();
+    s.players[0].rows.melee.units.push({ instanceId: 'winner', cardId: 'nr_ves' });
+    s.turn = 0;
+    s = applyAction(s, { type: 'PASS', player: 0 });
+    s = applyAction(s, { type: 'PASS', player: 1 });
+    expect(s.roundHistory[0]?.winner).toBe(0);
+    expect(s.turn).toBe(0);
   });
 });
 
@@ -188,6 +214,18 @@ describe('redactState', () => {
     expect(r.rngState).toBe(0);
     // Authoritative state unchanged
     expect(s.players[1].hand.every((id) => id !== '__hidden__')).toBe(true);
+  });
+
+  it("hides an opponent's pending choice and its private options", () => {
+    const s = newGame();
+    s.pendingChoice = {
+      player: 0,
+      kind: 'leader_peek',
+      options: s.players[1].hand.slice(0, 3),
+      remaining: 0,
+    };
+    expect(redactState(s, 0).pendingChoice?.options).toEqual(s.pendingChoice.options);
+    expect(redactState(s, 1).pendingChoice).toBeNull();
   });
 });
 

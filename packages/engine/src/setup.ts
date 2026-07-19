@@ -97,7 +97,9 @@ function initPlayer(deck: DeckList): PlayerState {
     leaderUsed: false,
     deck: [...deck.cards],
     hand: [],
+    redrawPile: [],
     graveyard: [],
+    summonQueue: [],
     rows: emptyRows(),
     passed: false,
     gems: 2,
@@ -107,8 +109,8 @@ function initPlayer(deck: DeckList): PlayerState {
 
 /**
  * Create a new game. Throws if either deck is invalid.
- * Coin flip decides who goes first; a Scoia'tael player chooses/wins the flip
- * (simplified: Scoia'tael always goes first vs a non-Scoia'tael opponent).
+ * Coin flip decides who goes first unless exactly one player is Scoia'tael,
+ * in which case that player chooses after redraws are complete.
  */
 export function createGame(seed: number, decks: [DeckList, DeckList]): GameState {
   for (const d of decks) {
@@ -125,33 +127,43 @@ export function createGame(seed: number, decks: [DeckList, DeckList]): GameState
   }
 
   // Francesca "Daisy of the Valley" passive: draw an extra card
-  players.forEach((p) => {
-    if (byId(p.leaderId).leaderAbility === 'francesca_daisy_of_the_valley' && p.deck.length) {
+  players.forEach((p, pid) => {
+    const opponent = players[pid === 0 ? 1 : 0];
+    if (
+      byId(p.leaderId).leaderAbility === 'francesca_daisy_of_the_valley' &&
+      byId(opponent.leaderId).leaderAbility !== 'emhyr_the_white_flame' &&
+      p.deck.length
+    ) {
       p.hand.push(p.deck.pop()!);
     }
   });
 
-  // First player: Scoia'tael perk, else coin flip
+  // Scoia'tael chooses who starts; otherwise use the coin flip.
   const st0 = players[0].faction === 'scoiatael';
   const st1 = players[1].faction === 'scoiatael';
-  let first: 0 | 1;
-  if (st0 && !st1) first = 0;
-  else if (st1 && !st0) first = 1;
-  else first = next(rng) < 0.5 ? 0 : 1;
+  const first: 0 | 1 = next(rng) < 0.5 ? 0 : 1;
+  const chooser: 0 | 1 | null = st0 !== st1 ? (st0 ? 0 : 1) : null;
 
   return {
     phase: 'redraw',
     round: 1,
-    turn: first,
+    turn: chooser ?? first,
     players,
     weather: { frost: false, fog: false, rain: false },
-    pendingChoice: null,
+    activeWeather: [],
+    pendingChoice:
+      chooser === null ? null : { player: chooser, kind: 'first_player', options: ['0', '1'], remaining: 1 },
     roundHistory: [],
     winner: null,
     drawn: false,
     rngState: rng.state,
     nextInstance: 1,
-    log: [{ turn: 0, text: `Coin flip: player ${first + 1} goes first` }],
+    log: [
+      {
+        turn: 0,
+        text: chooser === null ? `Coin flip: player ${first + 1} goes first` : `Player ${chooser + 1} chooses who goes first`,
+      },
+    ],
     turnCount: 0,
   };
 }

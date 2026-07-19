@@ -52,6 +52,27 @@ describe('card database', () => {
     }
   });
 
+  it('directional Muster targets exist and are units', () => {
+    for (const c of ALL_CARDS.filter((card) => card.musterIds)) {
+      for (const id of c.musterIds!) {
+        expect(byId(id).type, `${c.id} -> ${id}`).toBe('unit');
+      }
+    }
+  });
+
+  it('matches audited Witcher 3 card rows, strengths, and abilities', () => {
+    expect(byId('mo_toad')).toMatchObject({ strength: 7, rows: ['ranged'], abilities: ['scorch'] });
+    expect(byId('mo_harpy').rows).toEqual(['melee', 'ranged']);
+    expect(byId('sc_dol_blathanna_archer').strength).toBe(4);
+    expect(byId('sc_elven_skirmisher').abilities).toContain('muster');
+    expect(byId('sc_mahakaman_defender').abilities).not.toContain('muster');
+    expect(byId('sk_blueboy_lugos').rows).toEqual(['melee']);
+    expect(byId('sk_svanrige').strength).toBe(4);
+    expect(byId('sk_holger')).toMatchObject({ strength: 4, rows: ['siege'] });
+    expect(byId('sk_donar').rows).toEqual(['melee']);
+    expect(byId('sk_tordarroch_armorsmith').rows).toEqual(['melee']);
+  });
+
   it('every playable faction has at least 22 unit copies + a leader', () => {
     for (const f of ['northern_realms', 'nilfgaard', 'scoiatael', 'monsters', 'skellige'] as const) {
       const pool = ALL_CARDS.filter(

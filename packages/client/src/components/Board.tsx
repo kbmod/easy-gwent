@@ -39,14 +39,16 @@ function BoardRow({
   onHover?: (cardId: string | null) => void;
 }) {
   const rs = state.players[player].rows[row];
+  const rowSpecial = rs.specialCardId ? byId(rs.specialCardId) : null;
+  const slotTitle = rowSpecial?.name ?? (rs.hornActive ? "Commander's Horn active" : 'Row special slot');
   return (
     <div
       className={`board-row row-${row} ${mine ? 'row-mine' : 'row-theirs'} ${targetable ? 'row-targetable' : ''}`}
       onClick={targetable ? () => onRowClick?.(row) : undefined}
     >
       <div className={`row-badge ${rs.hornActive ? 'horn' : ''}`}>{rowScore(state, player, row)}</div>
-      <div className={`row-horn ${rs.hornActive ? 'horn-active' : ''}`} title={rs.hornActive ? 'Commander’s Horn active' : 'Horn slot'}>
-        📯
+      <div className={`row-horn ${rs.hornActive || rowSpecial ? 'horn-active' : ''}`} title={slotTitle}>
+        {rowSpecial?.special === 'mardroeme' ? 'M' : 'H'}
       </div>
       <div className="row-units">
         {rs.units.map((u) => {

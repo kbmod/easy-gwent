@@ -23,7 +23,7 @@ export interface PlayLeaderAction {
   player: PlayerId;
 }
 
-/** Answer a PendingChoice (e.g. medic revival target; null = decline when allowed). */
+/** Answer a PendingChoice; null declines the remaining effect. */
 export interface ResolveChoiceAction {
   type: 'RESOLVE_CHOICE';
   player: PlayerId;

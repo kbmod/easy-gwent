@@ -21,11 +21,16 @@ export const SCOIATAEL_CARDS: CardDef[] = [
   unit(F, 'sc_riordain', 'Riordain', 1, ['ranged']),
   unit(F, 'sc_schirru', 'Schirrú', 8, ['siege'], { abilities: ['scorch'] }),
   unit(F, 'sc_dol_blathanna_scout', 'Dol Blathanna Scout', 6, ['melee', 'ranged'], { count: 3 }),
-  unit(F, 'sc_dol_blathanna_archer', 'Dol Blathanna Archer', 6, ['ranged']),
-  unit(F, 'sc_elven_skirmisher', 'Elven Skirmisher', 2, ['ranged'], { count: 3 }),
+  unit(F, 'sc_dol_blathanna_archer', 'Dol Blathanna Archer', 4, ['ranged']),
+  unit(F, 'sc_elven_skirmisher', 'Elven Skirmisher', 2, ['ranged'], {
+    abilities: ['muster'], musterGroup: 'elven_skirmisher', count: 3,
+  }),
+  unit(F, 'sc_dwarven_skirmisher', 'Dwarven Skirmisher', 3, ['melee'], {
+    abilities: ['muster'], musterGroup: 'dwarven_skirmisher', count: 3,
+  }),
   unit(F, 'sc_havekar_healer', 'Havekar Healer', 0, ['ranged'], { abilities: ['medic'], count: 3 }),
   unit(F, 'sc_havekar_smuggler', 'Havekar Smuggler', 5, ['melee'], { abilities: ['muster'], musterGroup: 'havekar_smuggler', count: 3 }),
-  unit(F, 'sc_mahakaman_defender', 'Mahakaman Defender', 5, ['melee'], { abilities: ['muster'], musterGroup: 'mahakaman_defender', count: 5 }),
+  unit(F, 'sc_mahakaman_defender', 'Mahakaman Defender', 5, ['melee'], { count: 5 }),
   unit(F, 'sc_vrihedd_brigade_veteran', 'Vrihedd Brigade Veteran', 5, ['melee', 'ranged'], { count: 2 }),
   unit(F, 'sc_vrihedd_brigade_recruit', 'Vrihedd Brigade Recruit', 4, ['melee']),
 ];
