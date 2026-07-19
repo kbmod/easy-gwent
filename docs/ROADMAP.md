@@ -22,7 +22,9 @@ Owner review fixes and editor rework:
 
 - Corrected regular Gaunter O'Dimm's artwork; the manifest had pointed both
   Gaunter cards at the Darkness image. Added an exact wiki-title override so a
-  future manifest rebuild cannot repeat the mistake.
+  future manifest rebuild cannot repeat the mistake. Follow-up owner testing
+  found the old image persisted in browser cache, so card-art URLs are now
+  revisioned to force corrected assets to reload.
 - Added explicit opponent-pass feedback: a prominent “Opponent passed — Your
   turn” banner and the normal your-turn chime, including when a card reveal is
   still fading out.
@@ -32,7 +34,9 @@ Owner review fixes and editor rework:
 - Rebuilt the deck editor around card artwork and readable rules text. It now
   includes name/effect search, unit/special/effect filters, card metadata,
   copy availability, visual leader selection, deck steppers, validation and
-  statistics, summon-only references, and a responsive mobile layout.
+  statistics, summon-only references, and a responsive mobile layout. Search
+  tolerates a single typo/transposition, and exhaustive tests prove every legal
+  faction/neutral card appears and can be found by name.
 - Added client regression coverage for pass detection and editor effect-text
   classification.
 - Verification: 96/96 tests passed, TypeScript passed, production build passed,

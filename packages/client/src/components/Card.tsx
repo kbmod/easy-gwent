@@ -14,6 +14,11 @@ export interface CardProps {
 }
 
 const EXTS = ['.webp', '.png', '.jpg'] as const;
+export const CARD_ART_REVISION = '20260719-2';
+
+export function cardArtUrl(cardId: string, extension: (typeof EXTS)[number]): string {
+  return `/assets/cards/${cardId}${extension}?v=${CARD_ART_REVISION}`;
+}
 
 export function Card({ cardId, strength, selected, dimmed, onClick, onHover, size = 'row' }: CardProps) {
   const [extIndex, setExtIndex] = useState(0);
@@ -30,7 +35,7 @@ export function Card({ cardId, strength, selected, dimmed, onClick, onHover, siz
   const src =
     forcePlaceholder || failed || extIndex >= EXTS.length
       ? placeholderArt(cardId)
-      : `/assets/cards/${cardId}${EXTS[extIndex]}`;
+      : cardArtUrl(cardId, EXTS[extIndex]!);
 
   const shown = strength ?? def.strength;
   const boosted = def.type === 'unit' && shown !== undefined && def.strength !== undefined && shown !== def.strength;

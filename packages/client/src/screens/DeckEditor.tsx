@@ -26,7 +26,7 @@ const ROW_NAMES: Record<Row, string> = {
   siege: 'Siege',
 };
 
-type PoolFilter = 'all' | 'units' | 'specials' | 'effects';
+export type PoolFilter = 'all' | 'units' | 'specials' | 'effects';
 
 const FILTERS: Array<{ id: PoolFilter; label: string }> = [
   { id: 'all', label: 'All cards' },
@@ -59,6 +59,82 @@ function sortCards(a: CardDef, b: CardDef): number {
   const sb = b.strength ?? 0;
   if (sa !== sb) return sb - sa;
   return a.name.localeCompare(b.name);
+}
+
+/** Every card that may legally be added for a faction, independent of deck contents. */
+export function collectionCardsForFaction(faction: PlayableFaction): CardDef[] {
+  return ALL_CARDS.filter(
+    (card) =>
+      card.type !== 'leader' &&
+      card.count > 0 &&
+      (card.faction === faction || card.faction === 'neutral'),
+  ).sort(sortCards);
+}
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** Match one typo, a missing letter, or a neighboring transposition in a word. */
+function nearWord(query: string, candidate: string): boolean {
+  if (query === candidate) return true;
+  if (Math.min(query.length, candidate.length) < 5 || Math.abs(query.length - candidate.length) > 1) return false;
+
+  if (query.length === candidate.length) {
+    const differences: number[] = [];
+    for (let i = 0; i < query.length; i++) {
+      if (query[i] !== candidate[i]) differences.push(i);
+      if (differences.length > 2) return false;
+    }
+    if (differences.length === 1) return true;
+    return (
+      differences.length === 2 &&
+      differences[1] === differences[0]! + 1 &&
+      query[differences[0]!] === candidate[differences[1]!] &&
+      query[differences[1]!] === candidate[differences[0]!]
+    );
+  }
+
+  const [shorter, longer] = query.length < candidate.length ? [query, candidate] : [candidate, query];
+  let shortIndex = 0;
+  let longIndex = 0;
+  let skipped = false;
+  while (shortIndex < shorter.length && longIndex < longer.length) {
+    if (shorter[shortIndex] === longer[longIndex]) {
+      shortIndex++;
+      longIndex++;
+    } else if (!skipped) {
+      skipped = true;
+      longIndex++;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function filterCollection(cards: CardDef[], filter: PoolFilter, query: string): CardDef[] {
+  const normalizedQuery = normalizeSearch(query);
+  const queryWords = normalizedQuery.split(' ').filter(Boolean);
+
+  return cards.filter((card) => {
+    if (filter === 'units' && card.type !== 'unit') return false;
+    if (filter === 'specials' && card.type !== 'special') return false;
+    if (filter === 'effects' && !hasCardEffect(card)) return false;
+    if (!normalizedQuery) return true;
+
+    const searchable = normalizeSearch(`${card.id} ${card.name} ${cardEffectText(card) ?? ''}`);
+    if (searchable.includes(normalizedQuery)) return true;
+    const searchableWords = searchable.split(' ');
+    return queryWords.every((word) =>
+      searchableWords.some((candidate) => candidate.includes(word) || nearWord(word, candidate)),
+    );
+  });
 }
 
 function CollectionCard({
@@ -181,13 +257,7 @@ export function DeckEditorScreen({
   // Card pool for this faction (faction cards + neutrals), sorted.
   // count < 1 marks summon-only tokens that can never be deck-built.
   const pool = useMemo(
-    () =>
-      ALL_CARDS.filter(
-        (card) =>
-          card.type !== 'leader' &&
-          card.count > 0 &&
-          (card.faction === faction || card.faction === 'neutral'),
-      ).sort(sortCards),
+    () => collectionCardsForFaction(faction),
     [faction],
   );
   const leaders = useMemo(() => LEADER_CARDS.filter((leader) => leader.faction === faction), [faction]);
@@ -225,15 +295,7 @@ export function DeckEditorScreen({
   };
 
   const filteredPool = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return pool.filter((card) => {
-      if (poolFilter === 'units' && card.type !== 'unit') return false;
-      if (poolFilter === 'specials' && card.type !== 'special') return false;
-      if (poolFilter === 'effects' && !hasCardEffect(card)) return false;
-      if (!needle) return true;
-      const searchable = `${card.name} ${cardEffectText(card) ?? ''}`.toLowerCase();
-      return searchable.includes(needle);
-    });
+    return filterCollection(pool, poolFilter, query);
   }, [pool, poolFilter, query]);
 
   const stats = useMemo(() => {
@@ -320,7 +382,7 @@ export function DeckEditorScreen({
               <span className="editor-kicker">Browse and add</span>
               <h2>Card collection</h2>
             </div>
-            <span>{filteredPool.length} shown</span>
+            <span>{filteredPool.length} of {pool.length} shown</span>
           </div>
           <div className="collection-toolbar">
             <label className="collection-search">
