@@ -8,7 +8,7 @@ import {
   type Row,
 } from '@gwent/data';
 import { MAX_SPECIALS, MIN_UNITS, validateDeck, type DeckList } from '@gwent/engine';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card } from '../components/Card.tsx';
 import { loadDeckDraft, saveDeck } from '../game/decks.ts';
 
@@ -29,15 +29,23 @@ const UNIT_ROWS: Row[] = ['melee', 'ranged', 'siege'];
 
 export type PoolFilter = 'all' | 'units' | Row | 'heroes' | 'specials' | 'effects';
 
-const FILTERS: Array<{ id: PoolFilter; label: string }> = [
-  { id: 'all', label: 'All cards' },
+const FILTER_LABELS: Record<PoolFilter, string> = {
+  all: 'All cards',
+  units: 'All units',
+  melee: 'Melee',
+  ranged: 'Ranged',
+  siege: 'Siege',
+  heroes: 'Heroes',
+  specials: 'Specials',
+  effects: 'With effects',
+};
+
+const UNIT_FILTERS: Array<{ id: PoolFilter; label: string }> = [
   { id: 'units', label: 'Units' },
   { id: 'melee', label: 'Melee' },
   { id: 'ranged', label: 'Ranged' },
   { id: 'siege', label: 'Siege' },
   { id: 'heroes', label: 'Heroes' },
-  { id: 'specials', label: 'Specials' },
-  { id: 'effects', label: 'With effects' },
 ];
 
 export function hasCardEffect(card: CardDef): boolean {
@@ -248,7 +256,10 @@ export function DeckEditorScreen({
   const [deck, setDeck] = useState<DeckList>(() => loadDeckDraft(initialFaction));
   const [query, setQuery] = useState('');
   const [poolFilter, setPoolFilter] = useState<PoolFilter>('all');
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [unitMenuOpen, setUnitMenuOpen] = useState(false);
   const [mobilePane, setMobilePane] = useState<'collection' | 'deck'>('collection');
+  const filterMenuRef = useRef<HTMLDivElement>(null);
 
   // Auto-save every edit. Games validate on load and fall back to the starter
   // deck, so persisting an in-progress (invalid) draft is safe.
@@ -256,12 +267,35 @@ export function DeckEditorScreen({
     saveDeck(deck);
   }, [deck]);
 
+  useEffect(() => {
+    if (!filterMenuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!filterMenuRef.current?.contains(event.target as Node)) setFilterMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFilterMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [filterMenuOpen]);
+
   const switchFaction = (nextFaction: PlayableFaction) => {
     setFaction(nextFaction);
     setDeck(loadDeckDraft(nextFaction));
     setQuery('');
     setPoolFilter('all');
+    setFilterMenuOpen(false);
+    setUnitMenuOpen(false);
     setMobilePane('collection');
+  };
+
+  const selectFilter = (filter: PoolFilter) => {
+    setPoolFilter(filter);
+    setFilterMenuOpen(false);
   };
 
   // Card pool for this faction (faction cards + neutrals), sorted.
@@ -430,18 +464,74 @@ export function DeckEditorScreen({
                 placeholder="Name or effect…"
               />
             </label>
-            <div className="collection-filters" role="group" aria-label="Filter collection">
-              {FILTERS.map((filter) => (
-                <button
-                  type="button"
-                  key={filter.id}
-                  className={poolFilter === filter.id ? 'active' : ''}
-                  aria-pressed={poolFilter === filter.id}
-                  onClick={() => setPoolFilter(filter.id)}
-                >
-                  {filter.label}
-                </button>
-              ))}
+            <div className="collection-filter-menu" ref={filterMenuRef}>
+              <button
+                type="button"
+                className={`collection-filter-trigger ${poolFilter !== 'all' ? 'active' : ''}`}
+                aria-haspopup="menu"
+                aria-expanded={filterMenuOpen}
+                onClick={() => setFilterMenuOpen((open) => !open)}
+              >
+                <span>Filter</span>
+                <strong>{FILTER_LABELS[poolFilter]}</strong>
+                <i aria-hidden="true">{filterMenuOpen ? '▴' : '▾'}</i>
+              </button>
+              {filterMenuOpen && (
+                <div className="collection-filter-popover" role="menu" aria-label="Filter collection">
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={poolFilter === 'all'}
+                    className={poolFilter === 'all' ? 'active' : ''}
+                    onClick={() => selectFilter('all')}
+                  >
+                    All cards
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`collection-filter-units ${UNIT_FILTERS.some((filter) => filter.id === poolFilter) ? 'active' : ''}`}
+                    aria-expanded={unitMenuOpen}
+                    onClick={() => setUnitMenuOpen((open) => !open)}
+                  >
+                    <span>Units</span><span aria-hidden="true">{unitMenuOpen ? '▾' : '›'}</span>
+                  </button>
+                  {unitMenuOpen && (
+                    <div className="collection-filter-submenu" role="group" aria-label="Unit types">
+                      {UNIT_FILTERS.map((filter) => (
+                        <button
+                          type="button"
+                          role="menuitemradio"
+                          key={filter.id}
+                          aria-checked={poolFilter === filter.id}
+                          className={poolFilter === filter.id ? 'active' : ''}
+                          onClick={() => selectFilter(filter.id)}
+                        >
+                          {filter.id === 'units' ? 'All units' : filter.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={poolFilter === 'specials'}
+                    className={poolFilter === 'specials' ? 'active' : ''}
+                    onClick={() => selectFilter('specials')}
+                  >
+                    Specials
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={poolFilter === 'effects'}
+                    className={poolFilter === 'effects' ? 'active' : ''}
+                    onClick={() => selectFilter('effects')}
+                  >
+                    With effects
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

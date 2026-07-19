@@ -40,7 +40,8 @@ Owner review fixes and editor rework:
   to a sustained brass-like finish. Draws and losses retain the subdued
   round-end cue and match wins retain the full victory fanfare.
 - Rebuilt the deck editor around card artwork and readable rules text. It now
-  includes name/effect search, unit-row/hero/special/effect filters, card metadata,
+  includes name/effect search, a single hierarchical unit-type/special/effect
+  filter menu, card metadata,
   copy availability, visual leader selection, deck steppers, validation and
   statistics, and summon-only references. On phones, Collection and My Deck
   are separate full-height tabs with independent scrolling, keeping search,
