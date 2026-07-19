@@ -65,6 +65,7 @@ export interface PlayedCardEvent {
   player: PlayerId;
   cardId: string;
   row: Row | null;
+  kind: 'play' | 'revive' | 'summon';
 }
 
 export interface GameState {

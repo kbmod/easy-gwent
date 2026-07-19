@@ -25,6 +25,7 @@ export function applyAction(prev: GameState, action: Action): GameState {
       s.lastPlayedCard = {
         actionId: s.turnCount,
         player: action.player,
+        kind: 'play',
         ...handlePlayCard(s, rng, action),
       };
       afterMove(s, action.player, rng);
@@ -461,16 +462,23 @@ function reviveFromGraveyard(s: GameState, rng: Rng, player: PlayerId, cardId: s
   if (gi < 0) throw new IllegalActionError('Card no longer in graveyard');
   p.graveyard.splice(gi, 1);
   const def = byId(cardId);
+  const row = (def.rows ?? ['melee'])[0]!;
   if (def.abilities.includes('spy')) {
-    const row = (def.rows ?? ['melee'])[0]!;
     placeUnit(s, otherPlayer(player), row, def.id);
     for (let i = 0; i < 2 && p.deck.length; i++) p.hand.push(p.deck.pop()!);
   } else {
-    const row = (def.rows ?? ['melee'])[0]!;
     placeUnit(s, player, row, def.id);
-    triggerUnitAbilities(s, rng, player, row, def);
   }
   log(s, `Player ${player + 1} revives ${def.name}`);
+  s.lastPlayedCard = {
+    actionId: s.turnCount,
+    player,
+    cardId: def.id,
+    row,
+    kind: 'revive',
+  };
+  // The revival must be presented before abilities such as Muster or Scorch.
+  if (!def.abilities.includes('spy')) triggerUnitAbilities(s, rng, player, row, def);
   return def;
 }
 

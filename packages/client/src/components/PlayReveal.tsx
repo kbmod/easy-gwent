@@ -28,6 +28,14 @@ export function PlayReveal({ reveal, turnBanner, mine, opponentName }: PlayRevea
       : turnBanner === 'opponent-passed'
         ? `${opponentName} passed — Your turn`
         : `${opponentName}'s turn`;
+  const revealActor = reveal && (mine(reveal) ? 'You' : opponentName);
+  const revealVerb = !reveal
+    ? ''
+    : reveal.kind === 'revive'
+      ? (mine(reveal) ? 'revive' : 'revives')
+      : reveal.kind === 'summon'
+        ? (mine(reveal) ? 'summon' : 'summons')
+        : mine(reveal) ? 'play' : 'plays';
 
   return (
     <>
@@ -36,7 +44,7 @@ export function PlayReveal({ reveal, turnBanner, mine, opponentName }: PlayRevea
           <div className={`play-reveal-inner ${mine(reveal) ? 'play-reveal-mine' : 'play-reveal-theirs'}`}>
             <Card cardId={reveal.cardId} size="big" />
             <div className="play-reveal-label">
-              <strong>{mine(reveal) ? 'You play' : `${opponentName} plays`}</strong>
+              <strong>{revealActor} {revealVerb}</strong>
               <span>
                 {byId(reveal.cardId).name}
                 {reveal.row ? ` → ${ROW_LABEL[reveal.row] ?? reveal.row}` : ''}

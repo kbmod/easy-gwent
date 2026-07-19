@@ -64,28 +64,50 @@ describe('play reveal sequencing', () => {
       player: 1,
       cardId: 'ne_horn',
       row: 'melee',
+      kind: 'play',
     });
 
     expect(detectPlayReveal(prev, afterHorn)).toEqual({
       cardId: 'ne_horn',
       player: 1,
       row: 'melee',
+      kind: 'play',
     });
+  });
+
+  it('labels a revived ability card as a revival rather than a second play', () => {
+    const prev = revealState(1, 30);
+    const afterRevive = revealState(0, 31, [], [], {
+      actionId: 30,
+      player: 1,
+      cardId: 'ne_villentretenmerth',
+      row: 'melee',
+      kind: 'revive',
+    });
+
+    expect(detectPlayReveal(prev, afterRevive)?.kind).toBe('revive');
   });
 
   it('treats a played Muster card and all summoned cards as one reveal', () => {
     const prev = revealState(0, 10);
-    const afterMuster = revealState(1, 11, [
-      { instanceId: 'i20', cardId: 'ne_gaunter_odimm' },
-      { instanceId: 'i21', cardId: 'ne_gaunter_darkness' },
-      { instanceId: 'i22', cardId: 'ne_gaunter_darkness' },
-      { instanceId: 'i23', cardId: 'ne_gaunter_darkness' },
-    ]);
+    const afterMuster = revealState(
+      1,
+      11,
+      [
+        { instanceId: 'i20', cardId: 'ne_gaunter_odimm' },
+        { instanceId: 'i21', cardId: 'ne_gaunter_darkness' },
+        { instanceId: 'i22', cardId: 'ne_gaunter_darkness' },
+        { instanceId: 'i23', cardId: 'ne_gaunter_darkness' },
+      ],
+      [],
+      { actionId: 10, player: 0, cardId: 'ne_gaunter_odimm', row: 'ranged', kind: 'play' },
+    );
 
     expect(detectPlayReveal(prev, afterMuster)).toEqual({
       cardId: 'ne_gaunter_odimm',
       player: 0,
       row: 'ranged',
+      kind: 'play',
     });
   });
 

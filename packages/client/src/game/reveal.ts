@@ -48,6 +48,7 @@ export interface RevealEvent {
   /** Player who performed the action (not necessarily the board owner for spies). */
   player: PlayerId;
   row: Row | null;
+  kind: 'play' | 'revive' | 'summon';
 }
 
 interface PlacedUnit {
@@ -84,7 +85,7 @@ export function detectPlayReveal(
 ): Omit<RevealEvent, 'key'> | null {
   const played = state.lastPlayedCard;
   if (played && played.actionId !== prev.lastPlayedCard?.actionId) {
-    return { cardId: played.cardId, player: played.player, row: played.row };
+    return { cardId: played.cardId, player: played.player, row: played.row, kind: played.kind ?? 'play' };
   }
 
   // Compatibility/fallback for older snapshots and units created by resolving
@@ -97,7 +98,7 @@ export function detectPlayReveal(
   if (!primary) return null;
 
   const actor = prev.pendingChoice?.player ?? prev.turn;
-  return { cardId: primary.cardId, player: actor, row: primary.row };
+  return { cardId: primary.cardId, player: actor, row: primary.row, kind: 'summon' };
 }
 
 /**

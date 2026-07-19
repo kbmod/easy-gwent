@@ -539,7 +539,25 @@ describe('directional muster', () => {
 });
 
 describe('replayed abilities', () => {
-  it('a Muster unit revived by Medic still musters its group', () => {
+  it('logs and presents a revived Scorch unit before resolving its ability', () => {
+    let s = bareGame();
+    s.players[0].graveyard.push('ne_villentretenmerth');
+    place(s, 1, 'nf_black_archer', 'melee');
+    s = playFromHand(s, 0, 'nr_dun_banner_medic');
+    s = applyAction(s, { type: 'RESOLVE_CHOICE', player: 0, cardId: 'ne_villentretenmerth' });
+
+    const revived = s.log.findIndex((entry) => entry.text.includes('revives Villentretenmerth'));
+    const scorched = s.log.findIndex((entry) => entry.text.includes('Black Infantry Archer is scorched'));
+    expect(revived).toBeGreaterThanOrEqual(0);
+    expect(scorched).toBeGreaterThan(revived);
+    expect(s.lastPlayedCard).toMatchObject({
+      player: 0,
+      cardId: 'ne_villentretenmerth',
+      kind: 'revive',
+    });
+  });
+
+  it('a Muster unit revived by Medic pulls matching cards from the hand and deck', () => {
     let s = bareGame('scoiatael', 'nilfgaard');
     removeCards(s, 0, ['sc_elven_skirmisher']);
     s.players[0].graveyard.push('sc_elven_skirmisher');
