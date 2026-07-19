@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameState } from '@gwent/engine';
-import { didOpponentPass } from '../src/game/reveal.ts';
+import { detectPlayReveal, didOpponentPass } from '../src/game/reveal.ts';
 
 function turnState(turn: 0 | 1, passed: [boolean, boolean], roundHistoryLength = 0): GameState {
   return {
@@ -31,5 +31,76 @@ describe('opponent pass feedback', () => {
     const state = turnState(0, [false, true], 1);
 
     expect(didOpponentPass(prev, state, 0)).toBe(false);
+  });
+});
+
+function revealState(
+  turn: 0 | 1,
+  turnCount: number,
+  player0: Array<{ instanceId: string; cardId: string }> = [],
+  player1: Array<{ instanceId: string; cardId: string }> = [],
+): GameState {
+  const rows = (units: Array<{ instanceId: string; cardId: string }>) => ({
+    melee: { units: [], hornActive: false },
+    ranged: { units, hornActive: false },
+    siege: { units: [], hornActive: false },
+  });
+  return {
+    phase: 'play',
+    turn,
+    turnCount,
+    pendingChoice: null,
+    players: [{ rows: rows(player0) }, { rows: rows(player1) }],
+  } as unknown as GameState;
+}
+
+describe('play reveal sequencing', () => {
+  it('treats a played Muster card and all summoned cards as one reveal', () => {
+    const prev = revealState(0, 10);
+    const afterMuster = revealState(1, 11, [
+      { instanceId: 'i20', cardId: 'ne_gaunter_odimm' },
+      { instanceId: 'i21', cardId: 'ne_gaunter_darkness' },
+      { instanceId: 'i22', cardId: 'ne_gaunter_darkness' },
+      { instanceId: 'i23', cardId: 'ne_gaunter_darkness' },
+    ]);
+
+    expect(detectPlayReveal(prev, afterMuster)).toEqual({
+      cardId: 'ne_gaunter_odimm',
+      player: 0,
+      row: 'ranged',
+    });
+  });
+
+  it('attributes each following play from its own preceding turn', () => {
+    const afterMuster = revealState(1, 11, [
+      { instanceId: 'i20', cardId: 'ne_gaunter_odimm' },
+      { instanceId: 'i21', cardId: 'ne_gaunter_darkness' },
+      { instanceId: 'i22', cardId: 'ne_gaunter_darkness' },
+      { instanceId: 'i23', cardId: 'ne_gaunter_darkness' },
+    ]);
+    const afterOpponent = revealState(
+      0,
+      12,
+      afterMuster.players[0].rows.ranged.units,
+      [{ instanceId: 'i24', cardId: 'nr_ves' }],
+    );
+    const afterPlayer = revealState(
+      1,
+      13,
+      [...afterMuster.players[0].rows.ranged.units, { instanceId: 'i25', cardId: 'ne_zoltan' }],
+      afterOpponent.players[1].rows.ranged.units,
+    );
+
+    expect(detectPlayReveal(afterMuster, afterOpponent)?.player).toBe(1);
+    expect(detectPlayReveal(afterMuster, afterOpponent)?.cardId).toBe('nr_ves');
+    expect(detectPlayReveal(afterOpponent, afterPlayer)?.player).toBe(0);
+    expect(detectPlayReveal(afterOpponent, afterPlayer)?.cardId).toBe('ne_zoltan');
+  });
+
+  it('attributes spies to the player who played them, not their board owner', () => {
+    const prev = revealState(0, 4);
+    const afterSpy = revealState(1, 5, [], [{ instanceId: 'i8', cardId: 'nr_dijkstra' }]);
+
+    expect(detectPlayReveal(prev, afterSpy)?.player).toBe(0);
   });
 });

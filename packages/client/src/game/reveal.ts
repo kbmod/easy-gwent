@@ -45,21 +45,52 @@ export function didOpponentPass(prev: GameState, state: GameState, me: PlayerId)
 export interface RevealEvent {
   key: number;
   cardId: string;
-  /** Board owner the unit landed for (0/1 in engine terms). */
+  /** Player who performed the action (not necessarily the board owner for spies). */
   player: PlayerId;
   row: Row;
 }
 
-function unitMap(s: GameState): Map<string, { cardId: string; player: PlayerId; row: Row }> {
-  const m = new Map<string, { cardId: string; player: PlayerId; row: Row }>();
+interface PlacedUnit {
+  instanceId: string;
+  cardId: string;
+  row: Row;
+}
+
+function unitMap(s: GameState): Map<string, PlacedUnit> {
+  const m = new Map<string, PlacedUnit>();
   for (const p of [0, 1] as PlayerId[]) {
     for (const row of ROWS) {
       for (const u of s.players[p].rows[row].units) {
-        m.set(u.instanceId, { cardId: u.cardId, player: p, row });
+        m.set(u.instanceId, { instanceId: u.instanceId, cardId: u.cardId, row });
       }
     }
   }
   return m;
+}
+
+function instanceSequence(instanceId: string): number {
+  const value = Number(instanceId.replace(/^i/, ''));
+  return Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Find the card responsible for one action's board change. Abilities such as
+ * Muster can add several units atomically, but only the first-created unit is
+ * the played card; the remaining units are consequences of that same play.
+ */
+export function detectPlayReveal(
+  prev: GameState,
+  state: GameState,
+): Omit<RevealEvent, 'key'> | null {
+  const before = unitMap(prev);
+  const added = [...unitMap(state).values()]
+    .filter((unit) => !before.has(unit.instanceId))
+    .sort((a, b) => instanceSequence(a.instanceId) - instanceSequence(b.instanceId));
+  const primary = added[0];
+  if (!primary) return null;
+
+  const actor = prev.pendingChoice?.player ?? prev.turn;
+  return { cardId: primary.cardId, player: actor, row: primary.row };
 }
 
 /**
@@ -84,15 +115,11 @@ export function usePlayReveals(state: GameState | null, me: PlayerId) {
 
     // Detect newly placed units (skip the very first snapshot: nothing to reveal).
     if (prev) {
-      const before = unitMap(prev);
-      for (const [id, u] of unitMap(state)) {
-        if (!before.has(id)) {
-          queueRef.current.push({ key: ++keyRef.current, ...u });
-        }
-      }
-      // Collapse bursts: only surface the most recent play per state change.
-      if (queueRef.current.length > 2) {
-        queueRef.current = queueRef.current.slice(-2);
+      const nextReveal = detectPlayReveal(prev, state);
+      if (nextReveal) {
+        // Keep at most one waiting reveal. This prevents effect bursts or fast
+        // snapshots from leaving the overlay one or more turns behind.
+        queueRef.current = [{ key: ++keyRef.current, ...nextReveal }];
       }
       if (!timerRef.current) drainQueue();
     }

@@ -28,6 +28,10 @@ Owner review fixes and editor rework:
 - Added explicit opponent-pass feedback: a prominent “Opponent passed — Your
   turn” banner and the normal your-turn chime, including when a card reveal is
   still fading out.
+- Fixed play-reveal sequencing around effect bursts: Muster now produces one
+  primary-card transition instead of queueing summoned units into later turns,
+  and Spy transitions are attributed to the player who played the card rather
+  than the opponent whose board receives it.
 - Added a distinct four-note heroic reveal sting for winning a non-final round:
   the second note falls a fifth below the opening, then two notes leap upward
   to a sustained brass-like finish. Draws and losses retain the subdued
@@ -42,7 +46,7 @@ Owner review fixes and editor rework:
   prove every legal faction/neutral card appears and can be found by name.
 - Added client regression coverage for pass detection and editor effect-text
   classification.
-- Verification: 103/103 tests passed, TypeScript passed, production build passed,
+- Verification: 106/106 tests passed, TypeScript passed, production build passed,
   and the local and public servers returned the new hashed bundle.
 
 The project owner has begun live browser review and reported/fixed the issues
