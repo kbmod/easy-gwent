@@ -15,7 +15,7 @@ export interface CardProps {
 }
 
 const EXTS = ['.webp', '.png', '.jpg'] as const;
-export const CARD_ART_REVISION = '20260719-2';
+export const CARD_ART_REVISION = '20260719-3';
 
 export function cardArtUrl(cardId: string, extension: (typeof EXTS)[number]): string {
   return `/assets/cards/${cardId}${extension}?v=${CARD_ART_REVISION}`;

@@ -25,6 +25,10 @@ Owner review fixes and editor rework:
   future manifest rebuild cannot repeat the mistake. Follow-up owner testing
   found the old image persisted in browser cache, so card-art URLs are now
   revisioned to force corrected assets to reload.
+- Replaced incorrect Skellige Storm, Roach, and Cow artwork with owner-verified
+  sources, pinned their direct URLs against manifest regeneration, and advanced
+  the browser art-cache revision. The installed Cow file had been an exact
+  duplicate of Bovine Defense Force.
 - Added explicit opponent-pass feedback: a prominent “Opponent passed — Your
   turn” banner and the normal your-turn chime, including when a card reveal is
   still fading out.

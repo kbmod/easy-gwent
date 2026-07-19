@@ -23,6 +23,13 @@ const FILE_TITLE_OVERRIDES: Partial<Record<string, string>> = {
   ne_gaunter_odimm: 'File:Tw3 gwent card face Gaunt ODimm.png',
 };
 
+/** Exact sources that cannot be safely regenerated from the wiki filename. */
+const DIRECT_URL_OVERRIDES: Partial<Record<string, string>> = {
+  ne_cow: 'https://static.wikia.nocookie.net/witcher/images/0/08/Tw3_gwent_card_face_Cow.png',
+  ne_roach: 'https://gcdnb.pbrd.co/images/Afx13z2HMtnq.png',
+  ne_storm: 'https://static.wikia.nocookie.net/witcher/images/1/1a/Tw3_gwent_face_Skellige_Storm.png',
+};
+
 async function api(params: Record<string, string>): Promise<unknown> {
   const q = new URLSearchParams({ format: 'json', ...params });
   const res = await fetch(`${API}?${q}`, { headers: { 'user-agent': UA } });
@@ -118,6 +125,8 @@ async function searchFace(query: string): Promise<string | null> {
 }
 
 async function resolveCard(id: string, name: string): Promise<string | null> {
+  const direct = DIRECT_URL_OVERRIDES[id];
+  if (direct) return direct;
   const override = FILE_TITLE_OVERRIDES[id];
   if (override) return imageUrlForTitle(override);
 
