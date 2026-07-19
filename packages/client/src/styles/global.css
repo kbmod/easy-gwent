@@ -569,6 +569,11 @@ body::after {
   border: 1px solid #6b5a36; border-radius: 4px; cursor: pointer;
 }
 .ed-add:disabled { cursor: default; opacity: 0.4; }
+.ed-add-locked {
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: default; background: transparent; border-color: #6b5a3655; color: #9a8f74;
+}
+.ed-note { color: #9a8f74; font-size: 12px; margin: 2px 0 6px; }
 .ed-name { flex: 1; }
 .ed-meta { color: #9a8f74; font-size: 12px; }
 .ed-count { width: 40px; text-align: right; color: #cbbf9a; font-size: 12px; }

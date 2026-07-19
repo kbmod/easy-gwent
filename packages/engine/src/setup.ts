@@ -17,6 +17,7 @@ export interface DeckError {
     | 'too_few_units'
     | 'too_many_specials'
     | 'too_many_copies'
+    | 'trigger_only'
     | 'bad_leader';
   message: string;
 }
@@ -55,6 +56,13 @@ export function validateDeck(deck: DeckList): DeckError[] {
     }
     if (def.type === 'leader') {
       errors.push({ code: 'bad_leader', message: `${def.name} is a leader, not a deck card` });
+      continue;
+    }
+    if (def.count < 1) {
+      errors.push({
+        code: 'trigger_only',
+        message: `${def.name} only enters play as the result of another card's ability`,
+      });
       continue;
     }
     counts.set(id, (counts.get(id) ?? 0) + 1);

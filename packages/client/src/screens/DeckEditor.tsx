@@ -63,6 +63,15 @@ export function DeckEditorScreen({
   );
   const leaders = useMemo(() => LEADER_CARDS.filter((l) => l.faction === faction), [faction]);
 
+  // Summon-only tokens (count < 1) for this faction + neutral — shown read-only.
+  const triggerCards = useMemo(
+    () =>
+      ALL_CARDS.filter(
+        (c) => c.type !== 'leader' && c.count < 1 && (c.faction === faction || c.faction === 'neutral'),
+      ).sort(sortCards),
+    [faction],
+  );
+
   const inDeck = useMemo(() => {
     const m = new Map<string, number>();
     for (const id of deck.cards) m.set(id, (m.get(id) ?? 0) + 1);
@@ -159,6 +168,24 @@ export function DeckEditorScreen({
               );
             })}
           </ul>
+          {triggerCards.length > 0 && (
+            <>
+              <h3>Trigger cards</h3>
+              <p className="ed-note">
+                These enter play only as the result of another card's ability — they can't be added
+                to a deck.
+              </p>
+              <ul className="ed-list">
+                {triggerCards.map((c) => (
+                  <li key={c.id} className="ed-row ed-row-dim">
+                    <span className="ed-add ed-add-locked">✦</span>
+                    <span className="ed-name">{c.name}</span>
+                    <span className="ed-meta">{cardLabel(c)}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
 
         <section className="editor-pane">
