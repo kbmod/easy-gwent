@@ -59,6 +59,14 @@ export interface LogEntry {
   text: string;
 }
 
+/** Public presentation metadata for the most recent card played from hand. */
+export interface PlayedCardEvent {
+  actionId: number;
+  player: PlayerId;
+  cardId: string;
+  row: Row | null;
+}
+
 export interface GameState {
   phase: Phase;
   round: number; // 1-based
@@ -73,6 +81,7 @@ export interface GameState {
   drawn: boolean;
   rngState: number;
   nextInstance: number; // instanceId counter
+  lastPlayedCard: PlayedCardEvent | null;
   log: LogEntry[];
   turnCount: number;
 }

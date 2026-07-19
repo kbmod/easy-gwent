@@ -147,6 +147,13 @@ describe('scorch', () => {
 });
 
 describe('weather specials', () => {
+  it('records a Horn play for client transitions', () => {
+    let s = bareGame();
+    s = playFromHand(s, 0, 'ne_horn', 'siege');
+
+    expect(s.lastPlayedCard).toMatchObject({ player: 0, cardId: 'ne_horn', row: 'siege' });
+  });
+
   it('storm sets fog+rain, clear wipes all', () => {
     let s = bareGame();
     s = playFromHand(s, 0, 'ne_storm');

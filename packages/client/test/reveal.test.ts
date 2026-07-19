@@ -39,6 +39,7 @@ function revealState(
   turnCount: number,
   player0: Array<{ instanceId: string; cardId: string }> = [],
   player1: Array<{ instanceId: string; cardId: string }> = [],
+  lastPlayedCard: GameState['lastPlayedCard'] = null,
 ): GameState {
   const rows = (units: Array<{ instanceId: string; cardId: string }>) => ({
     melee: { units: [], decoys: [], hornActive: false },
@@ -49,12 +50,29 @@ function revealState(
     phase: 'play',
     turn,
     turnCount,
+    lastPlayedCard,
     pendingChoice: null,
     players: [{ rows: rows(player0) }, { rows: rows(player1) }],
   } as unknown as GameState;
 }
 
 describe('play reveal sequencing', () => {
+  it('reveals a Horn even though it does not add a unit', () => {
+    const prev = revealState(1, 20);
+    const afterHorn = revealState(0, 21, [], [], {
+      actionId: 20,
+      player: 1,
+      cardId: 'ne_horn',
+      row: 'melee',
+    });
+
+    expect(detectPlayReveal(prev, afterHorn)).toEqual({
+      cardId: 'ne_horn',
+      player: 1,
+      row: 'melee',
+    });
+  });
+
   it('treats a played Muster card and all summoned cards as one reveal', () => {
     const prev = revealState(0, 10);
     const afterMuster = revealState(1, 11, [

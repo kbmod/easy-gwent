@@ -38,7 +38,8 @@ export function PlayReveal({ reveal, turnBanner, mine, opponentName }: PlayRevea
             <div className="play-reveal-label">
               <strong>{mine(reveal) ? 'You play' : `${opponentName} plays`}</strong>
               <span>
-                {byId(reveal.cardId).name} → {ROW_LABEL[reveal.row] ?? reveal.row}
+                {byId(reveal.cardId).name}
+                {reveal.row ? ` → ${ROW_LABEL[reveal.row] ?? reveal.row}` : ''}
               </span>
             </div>
           </div>

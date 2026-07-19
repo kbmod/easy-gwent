@@ -47,7 +47,7 @@ export interface RevealEvent {
   cardId: string;
   /** Player who performed the action (not necessarily the board owner for spies). */
   player: PlayerId;
-  row: Row;
+  row: Row | null;
 }
 
 interface PlacedUnit {
@@ -82,6 +82,13 @@ export function detectPlayReveal(
   prev: GameState,
   state: GameState,
 ): Omit<RevealEvent, 'key'> | null {
+  const played = state.lastPlayedCard;
+  if (played && played.actionId !== prev.lastPlayedCard?.actionId) {
+    return { cardId: played.cardId, player: played.player, row: played.row };
+  }
+
+  // Compatibility/fallback for older snapshots and units created by resolving
+  // choices or leader effects rather than playing another card from hand.
   const before = unitMap(prev);
   const added = [...unitMap(state).values()]
     .filter((unit) => !before.has(unit.instanceId))

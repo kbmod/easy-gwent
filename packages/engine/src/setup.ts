@@ -158,6 +158,7 @@ export function createGame(seed: number, decks: [DeckList, DeckList]): GameState
     drawn: false,
     rngState: rng.state,
     nextInstance: 1,
+    lastPlayedCard: null,
     log: [
       {
         turn: 0,

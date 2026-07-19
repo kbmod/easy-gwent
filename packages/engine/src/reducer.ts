@@ -22,7 +22,11 @@ export function applyAction(prev: GameState, action: Action): GameState {
       break;
     case 'PLAY_CARD':
       requireTurn(s, action.player, 'play');
-      handlePlayCard(s, rng, action);
+      s.lastPlayedCard = {
+        actionId: s.turnCount,
+        player: action.player,
+        ...handlePlayCard(s, rng, action),
+      };
       afterMove(s, action.player, rng);
       break;
     case 'PLAY_LEADER': {
@@ -131,11 +135,15 @@ function handleRedraw(s: GameState, rng: Rng, player: PlayerId, handIndex: numbe
 
 // ── playing cards ────────────────────────────────────────────────────
 
-function handlePlayCard(s: GameState, rng: Rng, action: PlayCardAction): void {
+function handlePlayCard(s: GameState, rng: Rng, action: PlayCardAction): { cardId: string; row: Row | null } {
   const p = s.players[action.player];
   const cardId = p.hand[action.handIndex];
   if (cardId === undefined) throw new IllegalActionError('Bad hand index');
   const def = byId(cardId);
+  let playedRow = action.row ?? (def.type === 'unit' && def.rows?.length === 1 ? def.rows[0]! : null);
+  if (def.type === 'special' && def.special === 'decoy' && action.targetInstanceId) {
+    playedRow = ROWS.find((row) => p.rows[row].units.some((unit) => unit.instanceId === action.targetInstanceId)) ?? null;
+  }
 
   p.hand.splice(action.handIndex, 1);
 
@@ -146,6 +154,7 @@ function handlePlayCard(s: GameState, rng: Rng, action: PlayCardAction): void {
   } else {
     throw new IllegalActionError('Cannot play a leader card from hand');
   }
+  return { cardId, row: playedRow };
 }
 
 function resolveRow(action: PlayCardAction, def: CardDef): Row {
