@@ -5,14 +5,12 @@ export interface HandProps {
   /** Hand indexes that currently have at least one legal play. */
   playableIndexes: Set<number>;
   selectedIndex: number | null;
-  /** Always called on click — selection / inspect, not auto-play. */
+  /** Selects a card, or confirms an already-selected card. */
   onCardClick: (index: number) => void;
-  /** Fast play when a double-click resolves to one unambiguous action. */
-  onCardDoubleClick?: (index: number) => void;
   onHover?: (cardId: string | null) => void;
 }
 
-export function Hand({ cardIds, playableIndexes, selectedIndex, onCardClick, onCardDoubleClick, onHover }: HandProps) {
+export function Hand({ cardIds, playableIndexes, selectedIndex, onCardClick, onHover }: HandProps) {
   return (
     <div className="hand">
       {cardIds.map((id, i) => (
@@ -23,7 +21,6 @@ export function Hand({ cardIds, playableIndexes, selectedIndex, onCardClick, onC
           selected={selectedIndex === i}
           dimmed={!playableIndexes.has(i)}
           onClick={() => onCardClick(i)}
-          onDoubleClick={onCardDoubleClick ? () => onCardDoubleClick(i) : undefined}
           onHover={onHover}
         />
       ))}

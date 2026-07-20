@@ -7,7 +7,7 @@ import { Hand } from '../components/Hand.tsx';
 import { PlayReveal } from '../components/PlayReveal.tsx';
 import { LogPanel, StatusColumn } from '../components/SidePanel.tsx';
 import { loadDeck } from '../game/decks.ts';
-import { immediateHandPlay } from '../game/handInput.ts';
+import { selectedHandPlay } from '../game/handInput.ts';
 import { HUMAN, humanActSequence, newLocalGame, starterDeck, type Difficulty } from '../game/localGame.ts';
 import { FIRST_STEP_MS, STEP_MS, usePlayReveals } from '../game/reveal.ts';
 
@@ -89,20 +89,17 @@ export function GameScreen({ faction, aiFaction, difficulty, onExit }: GameScree
     return set;
   }, [legal, myMove]);
 
-  /** First click: select + show panel. Never auto-plays. */
   const onHandClick = (i: number) => {
     if (selected === i) {
-      setSelected(null);
+      if (!myMove) {
+        setSelected(null);
+        return;
+      }
+      const action = selectedHandPlay(legal, i);
+      if (action) dispatch(action);
       return;
     }
     setSelected(i);
-  };
-
-  const onHandDoubleClick = (i: number) => {
-    if (!myMove) return;
-    const action = immediateHandPlay(legal, i);
-    if (action) dispatch(action);
-    else setSelected(i);
   };
 
   const multiRow =
@@ -125,7 +122,7 @@ export function GameScreen({ faction, aiFaction, difficulty, onExit }: GameScree
             : multiRow
               ? 'Click a highlighted row to place this card'
               : selectedPlays.length === 1
-                ? 'Double-click the hand card, or click the card art (or Play), to confirm'
+                ? 'Click the selected hand card again, or click the card art (or Play), to confirm'
                 : 'Click a highlighted target on the board';
 
   const confirmPlay = () => {
@@ -208,7 +205,6 @@ export function GameScreen({ faction, aiFaction, difficulty, onExit }: GameScree
             playableIndexes={playableIndexes}
             selectedIndex={selected}
             onCardClick={onHandClick}
-            onCardDoubleClick={onHandDoubleClick}
             onHover={setHoverId}
           />
           <button className="btn btn-pass" disabled={!canPass} onClick={() => dispatch({ type: 'PASS', player: HUMAN })}>

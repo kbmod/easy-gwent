@@ -280,6 +280,7 @@ body::after {
   box-shadow: 0 1px 2px #000c;
 }
 .board-row {
+  position: relative; isolation: isolate; overflow: hidden;
   flex: 1; display: flex; align-items: center; gap: 6px; min-height: 0;
   background:
     repeating-linear-gradient(90deg, #ffffff05 0 2px, transparent 2px 7px),
@@ -289,6 +290,59 @@ body::after {
   box-shadow: inset 0 0 24px #00000055, inset 0 1px 0 #ffffff0a, 0 1px 2px #000a;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+.board-row > * { position: relative; z-index: 1; }
+.row-weather::after {
+  content: ''; position: absolute; z-index: 2; inset: 0; pointer-events: none;
+  opacity: 0.72;
+}
+.row-weather-frost::after {
+  background:
+    radial-gradient(circle at 8% 16%, #f4fbffcc 0 1px, transparent 2px),
+    radial-gradient(circle at 25% 72%, #d8f2ffbb 0 1px, transparent 2px),
+    radial-gradient(circle at 48% 24%, #ffffffaa 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 67% 82%, #d8f2ffbb 0 1px, transparent 2px),
+    radial-gradient(circle at 88% 36%, #f4fbffcc 0 1px, transparent 2px),
+    linear-gradient(180deg, #dff6ff44, #75b9dc24 55%, #dff6ff55);
+  background-size: 86px 64px, 112px 78px, 134px 92px, 96px 70px, 124px 84px, auto;
+  box-shadow: inset 0 0 18px #cdefffaa, inset 0 3px 5px #f3fbff99, inset 0 -3px 5px #9bd5f288;
+  animation: frost-drift 7s linear infinite;
+}
+.row-weather-fog::after {
+  background:
+    radial-gradient(ellipse 42% 48% at 10% 50%, #e2e5d8a8, transparent 70%),
+    radial-gradient(ellipse 48% 55% at 52% 42%, #cdd4cbb0, transparent 72%),
+    radial-gradient(ellipse 40% 50% at 92% 58%, #e4e1d2a0, transparent 70%),
+    linear-gradient(180deg, #d5d9cf20, #b9c2ba55 55%, #e3e1d622);
+  background-size: 130% 100%;
+  filter: blur(2px);
+  animation: fog-roll 8s ease-in-out infinite alternate;
+}
+.row-weather-rain::after {
+  background:
+    repeating-linear-gradient(108deg, transparent 0 13px, #b8dcf05c 14px 15px, transparent 16px 26px),
+    linear-gradient(180deg, #7ba7bd30, #27475c4d);
+  background-size: 180px 120px, auto;
+  box-shadow: inset 0 0 18px #315e7766;
+  animation: rain-fall 1.1s linear infinite;
+}
+@keyframes frost-drift {
+  to { background-position: 86px 32px, -56px 39px, 67px 46px, -48px 35px, 62px 42px, 0 0; }
+}
+@keyframes fog-roll {
+  from { background-position: -10% 0; opacity: 0.55; }
+  to { background-position: 10% 0; opacity: 0.82; }
+}
+@keyframes rain-fall {
+  to { background-position: -42px 120px, 0 0; }
+}
+.row-weather-label {
+  z-index: 3; flex: 0 0 auto; display: flex; align-items: center; gap: 4px;
+  padding: 3px 6px; border: 1px solid #d6e8ef99; border-radius: 999px;
+  background: #101820c9; color: #e7f5fa; font: 10px/1.2 'Cinzel', serif;
+  letter-spacing: 0.02em; text-shadow: 0 1px 2px #000;
+  box-shadow: 0 1px 5px #000a, inset 0 0 8px #a9d9ef22;
+}
+.row-weather-label > span:first-child { font-size: 14px; line-height: 1; }
 .row-mine { border-left: 3px solid #8a6d3b88; }
 .row-mine:hover { border-top-color: #9a7c4acc; box-shadow: inset 0 0 24px #00000044, inset 0 1px 0 #ffffff10, 0 1px 2px #000a; }
 .row-theirs { border-left: 3px solid #4a3a2488; }
@@ -474,7 +528,23 @@ body::after {
   border: 2px solid #4a3a24; border-radius: 6px; padding: 8px;
   box-shadow: inset 0 0 0 1px #c9a22733, inset 0 0 14px #00000088;
 }
-.weather-clear { color: #8a7c60; }
+.weather-clear {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  color: #f0d890; font-family: 'Cinzel', serif; font-weight: bold;
+  text-shadow: 0 1px 3px #000, 0 0 10px #d9b84b44;
+}
+.weather-clear > span { color: #f5d76e; font-size: 20px; line-height: 1; }
+.weather-active {
+  padding: 2px 4px; border-radius: 4px; color: #d8edf7;
+  text-shadow: 0 1px 3px #000;
+}
+.weather-active-frost { background: #8bcbe51c; }
+.weather-active-fog { background: #d7ded51a; }
+.weather-active-rain { background: #5d96b527; }
+.weather-active-storm {
+  background: linear-gradient(90deg, #d7ded51a, #5d96b527);
+  border-inline: 1px solid #86aec244;
+}
 .round-info {
   text-align: center; color: #b8a988; font-family: 'Cinzel', serif;
   letter-spacing: 0.08em; font-size: 13px;
@@ -940,26 +1010,52 @@ body::after {
     padding-top: calc(6px + env(safe-area-inset-top));
     padding-bottom: calc(6px + env(safe-area-inset-bottom));
   }
-  /* Status column becomes a horizontal strip */
-  .status-col { flex-direction: row; align-items: stretch; gap: 6px; }
-  .status-col .opp-block { flex: 1; gap: 2px; }
+  /* Keep player summaries useful without letting them crush the board. */
+  .status-col {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(76px, 0.85fr) 44px minmax(0, 1.15fr);
+    align-items: stretch;
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+  .status-col .opp-block { min-width: 0; gap: 2px; }
   .status-col .opp-block .seat { flex: 1; }
-  .status-col .seat { flex: 1; padding: 4px 6px; gap: 2px; }
-  .status-col .weather-box, .status-col .round-info { font-size: 11px; }
+  .status-col .seat { min-width: 0; padding: 4px; gap: 2px; }
+  .status-col .seat-main { min-width: 0; overflow: hidden; }
+  .status-col .seat-name { font-size: 13px; }
+  .status-col .seat-gems { font-size: 12px; }
+  .status-col .seat-info {
+    overflow: hidden; font-size: 9px; line-height: 1.15;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .status-col .seat-leader { margin-top: 3px; font-size: 10px; line-height: 1.15; }
+  .status-col .seat-leader-row { align-items: flex-start; gap: 3px; }
+  .status-col .seat-leader-ability { display: none; }
+  .status-col .seat-leader .btn-small { min-height: 26px; padding: 2px 5px; font-size: 9px; }
+  .status-col .weather-box {
+    min-width: 0; min-height: 0; gap: 2px; padding: 5px 3px;
+    overflow-y: auto; font-size: 9px; line-height: 1.1;
+  }
+  .status-col .weather-active { padding: 2px; }
+  .status-col .weather-clear { flex-direction: column; gap: 2px; font-size: 10px; }
+  .status-col .round-info { align-self: center; font-size: 9px; }
   .discard-pile { display: none; }
   .game-center { flex: 1; min-height: 0; }
   /* Side panel: compact horizontal preview + info, no log */
   .side-panel { flex-direction: row; gap: 6px; min-height: 0; }
   .preview-slot { height: 132px; flex: 0 0 auto; }
+  .preview-slot .card-big { height: 124px; }
   .card-info { max-height: 124px; flex: 1; }
   .card-info-flavor { display: none; }
   .side-panel .log { display: none; }
   /* Smaller cards & badges */
-  .card-row { height: clamp(48px, 8dvh, 72px); }
+  .card-row { height: clamp(42px, 7dvh, 64px); }
   .card-hand { height: clamp(96px, 14.5dvh, 132px); }
   .card-big { height: 176px; }
   .row-badge { min-width: 28px; height: 28px; font-size: 13px; }
   .row-horn { display: none; }
+  .row-weather-label { padding: 3px 5px; }
+  .row-weather-label > span:last-child { display: none; }
   .seat-score { min-width: 34px; height: 34px; font-size: 16px; }
   .board-row { gap: 4px; padding: 1px 3px; }
   .hand { gap: 4px; }
@@ -1080,6 +1176,43 @@ body::after {
   /* Menu / lobby */
   .join-row { flex-wrap: wrap; justify-content: center; }
   .leaderboard-box { width: 96%; }
+}
+
+/* Short landscape phones retain the three-column board, but every column must
+   be allowed to shrink within the actual viewport height. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .game-screen {
+    grid-template-columns: 150px minmax(0, 1fr) 180px;
+    gap: 6px; height: 100dvh; padding: 6px; overflow: hidden;
+  }
+  .status-col, .game-center, .side-panel { min-height: 0; }
+  .status-col {
+    display: flex; gap: 4px; overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .status-col .seat { padding: 5px; }
+  .status-col .seat-name { font-size: 13px; }
+  .status-col .seat-info { font-size: 10px; }
+  .status-col .seat-leader { margin-top: 3px; font-size: 10px; }
+  .status-col .seat-leader-ability, .status-col .discard-pile { display: none; }
+  .status-col .weather-box { min-height: 38px; padding: 4px; gap: 2px; font-size: 9px; }
+  .status-col .round-info { font-size: 9px; }
+  .seat-score { min-width: 30px; height: 30px; font-size: 14px; }
+  .board-row { gap: 3px; padding: 1px 3px; }
+  .card-row { height: clamp(24px, 10dvh, 36px); }
+  .row-badge { min-width: 24px; height: 24px; border-width: 1px; font-size: 11px; }
+  .row-horn { display: none; }
+  .row-weather-label { padding: 2px 4px; }
+  .row-weather-label > span:last-child { display: none; }
+  .hand-bar { margin-top: 3px; padding: 2px 4px; }
+  .card-hand { height: clamp(58px, 23dvh, 72px); }
+  .hand { gap: 3px; padding: 2px 0; }
+  .side-panel { gap: 5px; overflow: hidden; }
+  .preview-slot { height: 104px; }
+  .preview-slot .card-big { height: 96px; }
+  .card-info { max-height: 178px; padding: 6px 8px; gap: 3px; }
+  .card-info-flavor { display: none; }
+  .side-panel .log { display: none; }
 }
 
 /* Hover-preview is meaningless on touch; selection still previews */

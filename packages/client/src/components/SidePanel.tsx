@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { byId, getCardText } from '@gwent/data';
-import { scores, type GameState, type PlayerId, type WeatherKind } from '@gwent/engine';
+import { scores, type GameState, type PlayerId } from '@gwent/engine';
 import { Card } from './Card.tsx';
 
-const WEATHER_LABEL: Record<WeatherKind, string> = {
-  frost: 'Biting Frost',
-  fog: 'Impenetrable Fog',
-  rain: 'Torrential Rain',
-};
+export function weatherCardsInPlay(activeWeather: GameState['activeWeather']) {
+  const cards = new Map<string, { cardId: string; count: number }>();
+  for (const { cardId } of activeWeather) {
+    const current = cards.get(cardId);
+    if (current) current.count += 1;
+    else cards.set(cardId, { cardId, count: 1 });
+  }
+  return [...cards.values()];
+}
 
 export function StatusColumn({
   state,
@@ -33,7 +37,7 @@ export function StatusColumn({
       setTimeout(() => setCopied(false), 1500);
     });
   };
-  const weather = (Object.keys(state.weather) as WeatherKind[]).filter((w) => state.weather[w]);
+  const weatherCards = weatherCardsInPlay(state.activeWeather);
   const totals = scores(state);
 
   const seat = (p: PlayerId, mine: boolean) => {
@@ -95,7 +99,18 @@ export function StatusColumn({
         {seat(opp, false)}
       </div>
       <div className="weather-box">
-        {weather.length === 0 ? <span className="weather-clear">Clear skies</span> : weather.map((w) => <span key={w}>{WEATHER_LABEL[w]}</span>)}
+        {weatherCards.length === 0 ? (
+          <span className="weather-clear"><span aria-hidden="true">☀</span> Clear skies</span>
+        ) : (
+          weatherCards.map(({ cardId, count }) => {
+            const card = byId(cardId);
+            return (
+              <span className={`weather-active weather-active-${card.special}`} key={cardId}>
+                {card.name}{count > 1 ? ` ×${count}` : ''}
+              </span>
+            );
+          })
+        )}
       </div>
       <div className="round-info">Round {state.round}</div>
       {seat(human, true)}
