@@ -67,4 +67,59 @@ describe('auth', () => {
     logout(d, reg.token);
     expect(authByToken(d, reg.token)).toBeNull();
   });
+
+  it('does not write on every validation', () => {
+    const d = freshDb();
+    const reg = register(d, 'Dandelion', 'password123');
+    if (!reg.ok) throw new Error('reg failed');
+    const expiry = () =>
+      (d.prepare(`SELECT expires_at FROM sessions`).get() as { expires_at: number }).expires_at;
+
+    const before = expiry();
+    for (let i = 0; i < 25; i++) expect(authByToken(d, reg.token)).not.toBeNull();
+    expect(expiry()).toBe(before);
+  });
+
+  it('slides the idle window once the throttle has elapsed', () => {
+    const d = freshDb();
+    const reg = register(d, 'Zoltan', 'password123');
+    if (!reg.ok) throw new Error('reg failed');
+
+    // Backdate the window so the next use is more than an hour past the last slide.
+    d.prepare(`UPDATE sessions SET expires_at = expires_at - ?`).run(2 * 60 * 60 * 1000);
+    const before = (d.prepare(`SELECT expires_at FROM sessions`).get() as { expires_at: number }).expires_at;
+    expect(authByToken(d, reg.token)).not.toBeNull();
+    const after = (d.prepare(`SELECT expires_at FROM sessions`).get() as { expires_at: number }).expires_at;
+    expect(after).toBeGreaterThan(before);
+  });
+
+  it('expires a session at the absolute cap however often it is used', () => {
+    const d = freshDb();
+    const reg = register(d, 'Regis', 'password123');
+    if (!reg.ok) throw new Error('reg failed');
+
+    // A session issued 91 days ago whose idle window was slid forward yesterday:
+    // still well inside the idle window, but past the hard lifetime cap.
+    const now = Date.now();
+    d.prepare(`UPDATE sessions SET created_at = ?, expires_at = ?`).run(
+      now - 91 * 24 * 60 * 60 * 1000,
+      now + 29 * 24 * 60 * 60 * 1000,
+    );
+    expect(authByToken(d, reg.token)).toBeNull();
+    expect(d.prepare(`SELECT COUNT(*) c FROM sessions`).get()).toEqual({ c: 0 });
+  });
+
+  it('never slides the idle window past the absolute cap', () => {
+    const d = freshDb();
+    const reg = register(d, 'Yarpen', 'password123');
+    if (!reg.ok) throw new Error('reg failed');
+
+    // 80 days old: a full 30-day slide would overshoot the 90-day cap.
+    const now = Date.now();
+    const createdAt = now - 80 * 24 * 60 * 60 * 1000;
+    d.prepare(`UPDATE sessions SET created_at = ?, expires_at = ?`).run(createdAt, now + 60 * 60 * 1000);
+    expect(authByToken(d, reg.token)).not.toBeNull();
+    const { expires_at } = d.prepare(`SELECT expires_at FROM sessions`).get() as { expires_at: number };
+    expect(expires_at).toBe(createdAt + 90 * 24 * 60 * 60 * 1000);
+  });
 });

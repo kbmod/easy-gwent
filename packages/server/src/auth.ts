@@ -2,7 +2,9 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypt
 import type { UserPublic } from '@gwent/engine';
 import type { Db } from './db.ts';
 
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // idle window, refreshed on use
+const SESSION_MAX_LIFETIME_MS = 90 * 24 * 60 * 60 * 1000; // hard cap from issue time
+const SESSION_SLIDE_MIN_MS = 60 * 60 * 1000; // don't persist a slide more than hourly
 const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
@@ -115,19 +117,27 @@ export function login(db: Db, username: string, password: string): AuthResult {
   return { ok: true, token, user };
 }
 
-/** Validate token; slide expiry on success. */
+/** Validate token; slide the idle window on success, bounded by the absolute cap. */
 export function authByToken(db: Db, token: string): UserPublic | null {
   if (!token || token.length < 32) return null;
   const th = hashToken(token);
   const now = Date.now();
   const row = db
-    .prepare(`SELECT user_id, expires_at FROM sessions WHERE token_hash = ?`)
-    .get(th) as { user_id: string; expires_at: number } | undefined;
-  if (!row || row.expires_at < now) {
-    if (row) db.prepare(`DELETE FROM sessions WHERE token_hash = ?`).run(th);
+    .prepare(`SELECT user_id, expires_at, created_at FROM sessions WHERE token_hash = ?`)
+    .get(th) as { user_id: string; expires_at: number; created_at: number } | undefined;
+  if (!row) return null;
+  // Two independent ends: going idle, and simply getting old. Sliding can defer
+  // the first forever, so the second is what guarantees a token eventually dies.
+  if (row.expires_at < now || row.created_at + SESSION_MAX_LIFETIME_MS <= now) {
+    db.prepare(`DELETE FROM sessions WHERE token_hash = ?`).run(th);
     return null;
   }
-  db.prepare(`UPDATE sessions SET expires_at = ? WHERE token_hash = ?`).run(now + SESSION_TTL_MS, th);
+  // Slide, but never past the cap. `next - expires_at` is the time since the last
+  // persisted slide, so this also keeps routine reads from writing every request.
+  const next = Math.min(now + SESSION_TTL_MS, row.created_at + SESSION_MAX_LIFETIME_MS);
+  if (next - row.expires_at >= SESSION_SLIDE_MIN_MS) {
+    db.prepare(`UPDATE sessions SET expires_at = ? WHERE token_hash = ?`).run(next, th);
+  }
   return getUserPublic(db, row.user_id);
 }
 
