@@ -38,8 +38,17 @@ export function LobbyScreen({
   const [error, setError] = useState<string | null>(null);
   const [authed, setAuthed] = useState(false);
   const [resumeRoom, setResumeRoom] = useState<string | null>(getActiveRoom());
+  const [copied, setCopied] = useState(false);
   const socketRef = useRef<GwentSocket | null>(null);
   const joinedRef = useRef(false);
+
+  const copyRoomId = () => {
+    if (!roomId) return;
+    navigator.clipboard?.writeText(roomId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
 
   useEffect(() => {
     const token = getToken();
@@ -171,9 +180,14 @@ export function LobbyScreen({
         </button>
 
         {roomId && (
-          <p className="room-code">
-            Invite code: <strong>{roomId}</strong>
-          </p>
+          <div className="room-code-row">
+            <span className="room-code-label">Invite code</span>
+            <span className="room-code">{roomId}</span>
+            <button className="room-copy" onClick={copyRoomId} title="Copy invite code">
+              {copied ? '✓' : '⧉'}
+            </button>
+            {copied && <span className="copied-toast">Copied!</span>}
+          </div>
         )}
 
         <h3>Or join</h3>

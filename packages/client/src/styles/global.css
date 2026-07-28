@@ -207,7 +207,13 @@ body::after {
 .faction-picker { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .menu-note { color: #8a7c60; font-size: 13px; text-align: center; margin: 0; }
 .menu-error { color: #e06c5c; font-size: 13px; margin: 0; }
-.room-code { font-size: 18px; color: #c9a227; letter-spacing: 0.15em; font-family: 'Cinzel', serif; }
+.room-code-row {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-family: 'Cinzel', serif;
+}
+.room-code-label { color: #b8a988; font-size: 14px; letter-spacing: 0.08em; }
+.room-code-row .room-code { font-size: 18px; padding: 4px 12px; letter-spacing: 0.18em; }
+.room-code-row .room-copy { font-size: 16px; padding: 3px 9px; }
 .join-row { display: flex; gap: 8px; align-items: center; }
 .code-input {
   font-family: inherit; font-size: 16px; padding: 8px 12px; width: 120px;
@@ -383,8 +389,8 @@ body::after {
   transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 .card img { display: block; border-radius: 6px; height: 100%; width: auto; }
-.card-row { height: clamp(60px, 9dvh, 100px); }
-.card-hand { height: clamp(120px, 16.5dvh, 190px); }
+.card-row { height: clamp(58px, 9.5dvh, 110px); }
+.card-hand { height: clamp(100px, 13dvh, 156px); }
 .card-big { height: 260px; }
 .card-hero {
   box-shadow: 0 0 0 2px #c9a227, 0 2px 8px #000a;
@@ -486,6 +492,22 @@ body::after {
   cursor: pointer;
 }
 .room-copy:hover { border-color: #c9a227; color: #f5d76e; }
+.copied-toast {
+  flex: 0 0 auto;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  color: #7fc98a;
+  white-space: nowrap;
+  animation: copied-fade 1.5s ease forwards;
+}
+@keyframes copied-fade {
+  0% { opacity: 0; transform: translateY(2px); }
+  15% { opacity: 1; transform: translateY(0); }
+  70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-1px); }
+}
 .seat-gems { color: #b3202a; letter-spacing: 2px; font-size: 16px; }
 .seat-info { font-size: 13px; color: #b8a988; }
 .discard-pile {

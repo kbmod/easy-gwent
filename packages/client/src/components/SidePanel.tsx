@@ -94,6 +94,7 @@ export function StatusColumn({
             <button className="room-copy" onClick={copyRoomId} title="Copy room code">
               {copied ? '✓' : '⧉'}
             </button>
+            {copied && <span className="copied-toast">Copied!</span>}
           </div>
         )}
         {seat(opp, false)}
