@@ -85,6 +85,13 @@ npm run build-card-text   # refresh committed card text
 npm run refresh-wiki-cache # refresh gitignored rules references
 ```
 
+To rebuild a single side after a change, see [build.md](build.md):
+
+```bash
+npm run build -w @gwent/server   # server changes; needs a restart
+npm run build -w @gwent/client   # client changes; served immediately
+```
+
 ---
 
 ## Card text and artwork
@@ -146,8 +153,10 @@ npx tsc --noEmit
 npm run build
 ```
 
-`npm run build` downloads the uncommitted card artwork and creates the client
-bundle. Use `npm run build:code` if you intentionally want placeholders only.
+`npm run build` downloads the uncommitted card artwork and creates both the
+client and server bundles. Use `npm run build:code` if you intentionally want
+placeholders only. `npm start` runs the built server bundle, so a build has to
+succeed before the first start.
 
 ### 2. Start the application
 
@@ -183,6 +192,11 @@ gwent.example.com {
 ```
 
 Run `npm start` under a process supervisor such as systemd, using an unprivileged
-service account and the repository as its working directory. Rebuild after
-pulling updates; restart the process when server code or dependencies change.
-Client-only rebuilds are served immediately from the new static bundle.
+service account and the repository as its working directory. Point the service at
+the built bundle (`node packages/server/dist/index.js`) rather than a TypeScript
+loader.
+
+Builds are deliberately not wired into startup, so nothing rebuilds on restart.
+After pulling updates, rebuild explicitly — see [build.md](build.md). A server
+rebuild needs a restart; a client rebuild is served immediately from the new
+static bundle.
