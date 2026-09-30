@@ -10,7 +10,7 @@ This is a TypeScript npm workspace for a browser Gwent clone. Main packages:
 - `packages/client`: React + Vite UI, screens, components, helpers, and CSS.
 - `packages/server`: HTTP/WebSocket server, auth, rooms, stats, and SQLite access.
 
-Tests are colocated in `packages/*/test/**/*.test.ts`. Card art is fetched into `assets/cards/` and is not committed; card text JSON is committed in `packages/data/src/card-text.json`. Utility scripts live in `scripts/`.
+Tests are colocated in `packages/*/test/**/*.test.ts`. Card art is committed in `assets/cards/` so remote builds do not depend on the wiki CDN; card text JSON is committed in `packages/data/src/card-text.json`. Utility scripts live in `scripts/`.
 
 ## Build, Test, and Development Commands
 
@@ -18,9 +18,9 @@ Tests are colocated in `packages/*/test/**/*.test.ts`. Card art is fetched into 
 - `npm test`: run all Vitest tests matching `packages/*/test/**/*.test.ts`.
 - `npm run dev:server`: run the server on `127.0.0.1:8787` with `tsx watch`.
 - `npm run dev`: run the Vite client, usually on port `5173`.
-- `npm run build`: fetch missing card images, then build packages.
-- `npm run build:code`: build packages without fetching images.
-- `npm run fetch-assets`: populate `assets/cards/` from `scripts/asset-manifest.json`.
+- `npm run build`: verify committed card images, then build packages.
+- `npm run build:code`: build packages without checking images.
+- `npm run fetch-assets`: refresh missing images from `scripts/asset-manifest.json`.
 - `npm run build-card-text`: refresh committed card text data when needed.
 - `npm run refresh-wiki-cache`: refresh the local Witcher 3 Gwent wiki reference.
 
@@ -49,7 +49,7 @@ Pull requests should describe gameplay/UI/server impact, list tests run, and cal
 
 ## Security & Configuration Tips
 
-Do not commit fetched card images, local databases, logs, secrets, or production config. Treat `server.log` and SQLite files as local artifacts. Keep generated data changes reviewable by separating them from unrelated code edits.
+Do not commit local databases, logs, secrets, or production config. Treat `server.log` and SQLite files as local artifacts. Keep generated data changes reviewable by separating them from unrelated code edits. Card images in `assets/cards/` are an explicit exception and must remain complete for remote builds.
 
 ## VPS Operations
 

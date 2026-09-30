@@ -7,10 +7,21 @@ import { defineConfig, type Plugin } from 'vite';
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const assetsDir = path.resolve(rootDir, '../../assets');
 
-/** Serve repo-root /assets during `vite dev` (card art downloads). */
+/** Serve downloaded card art in dev and include it in the client build. */
 function serveCardAssets(): Plugin {
   return {
     name: 'serve-card-assets',
+    writeBundle(options) {
+      const cardsDir = path.join(assetsDir, 'cards');
+      if (!fs.existsSync(cardsDir)) return;
+      const outputDir = options.dir ?? path.join(rootDir, 'dist');
+      const destination = path.join(outputDir, 'assets', 'cards');
+      for (const name of fs.readdirSync(cardsDir)) {
+        if (!/\.(webp|png|jpe?g)$/i.test(name)) continue;
+        fs.mkdirSync(destination, { recursive: true });
+        fs.copyFileSync(path.join(cardsDir, name), path.join(destination, name));
+      }
+    },
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (!req.url?.startsWith('/assets/')) return next();

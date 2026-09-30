@@ -79,8 +79,8 @@ Useful checks and asset commands:
 
 ```bash
 npm test                  # complete Vitest suite
-npm run build:code        # build without downloading card images
-npm run fetch-assets      # fetch missing card images only
+npm run build             # verify and package committed card images
+npm run fetch-assets      # refresh missing card images when maintaining assets
 npm run build-card-text   # refresh committed card text
 npm run refresh-wiki-cache # refresh gitignored rules references
 ```
@@ -99,11 +99,16 @@ npm run build -w @gwent/client   # client changes; served immediately
 | Material | In Git? | How it is handled |
 |---|---:|---|
 | Ability and flavor text | Yes | Stored in `packages/data/src/card-text.json`; missing entries fall back to generated rules text. |
-| Card artwork | No | Downloaded at build time from URLs in `scripts/asset-manifest.json` into the gitignored `assets/cards/` directory. |
+| Card artwork | Yes | Stored in `assets/cards/` so remote builds can package it without contacting the wiki CDN. Source URLs are recorded in `scripts/asset-manifest.json`. |
 | Raw wiki reference | No | Cached under the gitignored `.wiki-cache/witcher3-gwent/` directory for mechanics verification. |
 
-If artwork is unavailable, the client uses generated SVG placeholders, so the
-game and code-only build remain functional.
+`npm run build` verifies that every card has a valid local image before building.
+The client still has generated SVG placeholders for a missing image at runtime.
+
+Cloudflare builds can use `npm run build` with `packages/client/dist` as the
+static asset directory. The committed card art is copied into that directory
+automatically. The Node server's API, WebSocket, and SQLite features need a separate
+Workers migration; the Vite client build alone does not provide them.
 
 ---
 

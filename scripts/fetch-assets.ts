@@ -1,11 +1,11 @@
 /**
  * Build-time download of card art from the Witcher wiki (URLs in asset-manifest.json).
  *
- * Copyrighted image binaries are written only to the local disk (assets/cards/) and
- * must never be committed. Invoked automatically by `npm run build`.
+ * Downloads missing images into assets/cards/ for review and inclusion in the
+ * repository. Normal builds use committed copies instead of this CDN.
  *
  * Env:
- *   SKIP_FETCH_ASSETS=1  — no-op (used for offline code-only builds)
+ *   SKIP_FETCH_ASSETS=1  — no-op
  *
  * Usage: npm run fetch-assets
  */
@@ -21,6 +21,12 @@ const OUT_DIR = path.join(ROOT, 'assets', 'cards');
 
 const DELAY_MS = 1000;
 const RETRIES = 3;
+
+class HttpError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+  }
+}
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -57,7 +63,7 @@ async function download(url: string): Promise<Buffer> {
         headers: { 'user-agent': UA, accept: 'image/*,*/*' },
         redirect: 'follow',
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new HttpError(res.status);
       const ab = await res.arrayBuffer();
       const buf = Buffer.from(ab);
       if (buf.length < 100) throw new Error('file too small');
@@ -67,6 +73,7 @@ async function download(url: string): Promise<Buffer> {
       return buf;
     } catch (e) {
       lastErr = e;
+      if (e instanceof HttpError && e.status >= 400 && e.status < 500 && e.status !== 429) break;
       await sleep(500 * attempt);
     }
   }
@@ -84,19 +91,6 @@ async function main() {
   }
   const manifest = JSON.parse(fs.readFileSync(MANIFEST, 'utf8')) as Record<string, string>;
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  // licensing note for downloaders
-  const readme = path.join(ROOT, 'assets', 'README.md');
-  if (!fs.existsSync(readme)) {
-    fs.writeFileSync(
-      readme,
-      `# Card assets\n\n` +
-        `Downloaded card art is **not** redistributed with this repository.\n` +
-        `Images are copyright CD Projekt Red / their respective owners.\n` +
-        `Run \`npm run fetch-assets\` on your machine or VPS after generating the manifest.\n` +
-        `The app falls back to generated placeholders when a file is missing.\n`,
-    );
-  }
-
   const entries = Object.entries(manifest);
   let downloaded = 0;
   let skipped = 0;
@@ -126,6 +120,7 @@ async function main() {
 
   console.log(`\nDone. downloaded=${downloaded} skipped=${skipped} failed=${failed}`);
   if (failures.length) console.log('Failed ids:', failures.join(', '));
+  if (failed) process.exitCode = 1;
 }
 
 main().catch((e) => {
